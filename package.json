@@ -51,7 +51,10 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "bench": "node --import tsx bench/run.ts"
+    "test:reallife": "vitest run test/reallife/",
+    "bench": "node --import tsx bench/run.ts",
+    "gen:fixtures": "uv run --directory scripts python gen_fixtures.py --overwrite",
+    "gen:refs": "uv run --directory scripts python gen_reallife_refs.py --out ../test/reallife/references/"
   },
   "devDependencies": {
     "effect": "^3.0.0",

@@ -14,12 +14,15 @@ import {
 } from "../xform/fourier.js";
 import { nextPowerOfTwo } from "../core/fft.js";
 
-export type FourierService = {
+export interface FourierService {
   fft: (size: number) => FFT;
   window: (type: WindowType, size: number) => Float64Array;
-};
+}
 
-export const Fourier = Context.Tag<FourierService>("pragma-dsp/Fourier");
+export class Fourier extends Context.Tag("pragma-dsp/Fourier")<
+  Fourier,
+  FourierService
+>() {}
 
 export const FourierLive = Layer.effect(
   Fourier,
@@ -179,13 +182,13 @@ export const spectrumFx = (
   samples: ArrayLike<number>,
   options: SpectrumFxOptions = {}
 ) =>
-  Effect.gen(function* (_) {
-    const service = yield* _(Fourier);
+  Effect.gen(function* () {
+    const service = yield* Fourier;
     return spectrumWithService(service, samples, options);
   });
 
 export const spectrumStream = (
-  frames: Stream.Stream<never, never, Float32Array>,
+  frames: Stream.Stream<Float32Array>,
   options: SpectrumFxOptions = {}
 ) =>
   Stream.mapEffect(frames, (frame) => spectrumFx(frame, options));

@@ -1,0 +1,12 @@
+[project]
+name = "pragma-dsp-fixtures"
+version = "0.1.0"
+description = "Test fixture generators for pragma-dsp"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=1.24",
+    "scipy>=1.10",
+]
+
+[tool.uv]
+dev-dependencies = []
