@@ -1,0 +1,63 @@
+{
+  "name": "pragma-dsp",
+  "version": "0.1.0",
+  "description": "Useful DSP primitives for TypeScript.",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    },
+    "./xform": {
+      "types": "./dist/xform/index.d.ts",
+      "import": "./dist/xform/index.mjs",
+      "require": "./dist/xform/index.cjs"
+    },
+    "./xform/fourier": {
+      "types": "./dist/xform/fourier.d.ts",
+      "import": "./dist/xform/fourier.mjs",
+      "require": "./dist/xform/fourier.cjs"
+    },
+    "./core": {
+      "types": "./dist/core/index.d.ts",
+      "import": "./dist/core/index.mjs",
+      "require": "./dist/core/index.cjs"
+    },
+    "./effect": {
+      "types": "./dist/effect/index.d.ts",
+      "import": "./dist/effect/index.mjs",
+      "require": "./dist/effect/index.cjs"
+    }
+  },
+  "peerDependencies": {
+    "effect": "^3.0.0"
+  },
+  "peerDependenciesMeta": {
+    "effect": {
+      "optional": true
+    }
+  },
+  "scripts": {
+    "build": "tsdown",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "bench": "node --import tsx bench/run.ts"
+  },
+  "devDependencies": {
+    "mitata": "^1.0.0",
+    "tsdown": "^0.0.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.0.0",
+    "vitest": "^1.0.0"
+  }
+}
