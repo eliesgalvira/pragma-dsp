@@ -36,6 +36,21 @@
       "types": "./dist/effect/index.d.ts",
       "import": "./dist/effect/index.mjs",
       "require": "./dist/effect/index.cjs"
+    },
+    "./math/complex": {
+      "types": "./dist/math/index.d.ts",
+      "import": "./dist/math/index.mjs",
+      "require": "./dist/math/index.cjs"
+    },
+    "./fluent": {
+      "types": "./dist/fluent/index.d.ts",
+      "import": "./dist/fluent/index.mjs",
+      "require": "./dist/fluent/index.cjs"
+    },
+    "./xform/fourier-fluent": {
+      "types": "./dist/xform/fourier-fluent.d.ts",
+      "import": "./dist/xform/fourier-fluent.mjs",
+      "require": "./dist/xform/fourier-fluent.cjs"
     }
   },
   "peerDependencies": {
