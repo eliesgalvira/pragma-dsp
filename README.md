@@ -9,10 +9,13 @@ Useful DSP primitives for TypeScript with a beginner-friendly ladder of APIs.
 import { spectrum } from "pragma-dsp";
 
 const samples = Float32Array.from([0, 1, 0, -1, 0, 1, 0, -1]);
-const result = spectrum(samples, { sampleRate: 48_000 });
+const result = spectrum(samples, { sampleRate: 48_000, returnComplex: true });
 
 console.log(result.peak.frequency, result.peak.amplitude);
+console.log(result.complex.real.length); // raw FFT bins
 ```
+
+Note: inputs may be `Float32Array` (e.g. WebAudio), while outputs are `Float64Array` for precision.
 
 ### 2) Power Fourier utilities
 ```ts
@@ -38,7 +41,22 @@ const freqs = binFrequencies(fftSize, 48_000, "one");
 console.log(freqs[10], mag[10], ang[10]);
 ```
 
-### 3) Expert core reuse (manual buffers)
+### 3) Short-time Fourier transform (STFT)
+```ts
+import { stft } from "pragma-dsp/xform/stft";
+
+const samples = Float32Array.from({ length: 4096 }, (_, i) => Math.sin(i));
+const result = stft(samples, {
+  fftSize: 1024,
+  hopSize: 256,
+  sampleRate: 48_000,
+  window: "hann"
+});
+
+console.log(result.frames.length, result.frequencies.length);
+```
+
+### 4) Expert core reuse (manual buffers)
 ```ts
 import { Radix2Fft, createComplexArray } from "pragma-dsp/core";
 
@@ -50,7 +68,7 @@ fft.forward(input, out);
 // Reuse `out` across frames to avoid allocations.
 ```
 
-### 4) Effect integration (optional)
+### 5) Effect integration (optional)
 ```ts
 import { Stream } from "effect";
 import { FourierLive, spectrumStream } from "pragma-dsp/effect";

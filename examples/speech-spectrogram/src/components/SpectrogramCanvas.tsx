@@ -1,6 +1,6 @@
 import { useRef, useEffect } from "react";
-import type { StftResult } from "../dsp/stft";
-import { magnitudeToDb } from "../dsp/stft";
+import type { StftResult } from "pragma-dsp/xform/stft";
+import { magnitudeToDb } from "pragma-dsp/analysis";
 import type { FormantResult } from "../dsp/pitch";
 
 type Props = {
@@ -65,7 +65,9 @@ export function SpectrogramCanvas({
     const displayBins = maxBin + 1;
 
     // Convert all frames to dB
-    const dbFrames = frames.map((f) => magnitudeToDb(f.magnitudes, -80));
+    const dbFrames = frames.map((f) =>
+      magnitudeToDb(f.magnitudes, { floorDb: -80 })
+    );
 
     // Global min/max for color scaling
     let globalMin = 0, globalMax = -Infinity;

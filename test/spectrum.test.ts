@@ -32,4 +32,12 @@ describe("spectrum scaling + peak detection", () => {
       1e-3
     );
   });
+
+  it("returns raw complex spectrum when requested", () => {
+    const input = Float64Array.from([0, 1, 0, -1, 0, 1, 0, -1]);
+    const result = spectrum(input, { fftSize: 8, returnComplex: true });
+
+    expect(result.complex.real.length).toBe(8);
+    expect(result.complex.imag.length).toBe(8);
+  });
 });

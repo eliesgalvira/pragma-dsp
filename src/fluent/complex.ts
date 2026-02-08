@@ -298,6 +298,16 @@ export class ComplexChain<S extends ChainState> {
   }
 
   /**
+   * Explicit non-consuming inverse into a provided output buffer.
+   */
+  inverseInto(
+    this: ComplexChain<InverseReady>,
+    out: ComplexArray,
+  ): ComplexArray {
+    return this._inverseFn!(this.data, out);
+  }
+
+  /**
    * Checked inverse: always callable when `hasFft` is true, regardless of
    * `invert` state. Returns a result union so runtime errors are explicit.
    */

@@ -73,6 +73,20 @@ describe("FluentFFT", () => {
     expect(result).toBe(out);
     expectCloseArr(out.real, [5, 6, 7, 8]);
   });
+
+  it("inverseInto writes to out without mutating chain data", () => {
+    const fft = new FluentFFT(4);
+    const signal = Float64Array.from([1, 2, 3, 4]);
+    const chain = fft.forward(signal);
+    const before = chain.clone().unwrap();
+    const out = createComplexArray(4);
+
+    const result = chain.inverseInto(out);
+    expect(result).toBe(out);
+    expectCloseArr(out.real, [1, 2, 3, 4]);
+    expectCloseArr(chain.unwrap().real, Array.from(before.real));
+    expectCloseArr(chain.unwrap().imag, Array.from(before.imag));
+  });
 });
 
 // ── chain() factory (no FFT context) ─────────────────────────────────

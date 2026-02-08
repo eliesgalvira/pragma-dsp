@@ -5,7 +5,7 @@ import {
   blobToFloat32Array,
   playSignal,
 } from "./audio/record";
-import { computeStft } from "./dsp/stft";
+import { stft } from "pragma-dsp/xform/stft";
 import { detectPitch, detectFormants } from "./dsp/pitch";
 import { WaveformCanvas } from "./components/WaveformCanvas";
 import { SpectrogramCanvas } from "./components/SpectrogramCanvas";
@@ -66,11 +66,12 @@ export default function App() {
     const { samples, sampleRate } = state;
 
     // STFT for spectrogram
-    const stft = computeStft(samples, {
+    const stftResult = stft(samples, {
       fftSize: FFT_SIZE,
       hopSize: HOP_SIZE,
       sampleRate,
       window: "hann",
+      complexSides: "one",
     });
 
     // Pitch track (per frame)
@@ -82,8 +83,8 @@ export default function App() {
     }
 
     // Formants (per frame, using STFT magnitudes + frequencies)
-    const formants = stft.frames.map((f) =>
-      detectFormants(f.magnitudes, stft.frequencies, {
+    const formants = stftResult.frames.map((f) =>
+      detectFormants(f.magnitudes, stftResult.frequencies, {
         smoothingWidth: 15,
         maxFormants: 4,
       })
@@ -109,7 +110,7 @@ export default function App() {
       }
     }
 
-    return { stft, pitchTrack, formants, medianF0, formantMedians };
+    return { stft: stftResult, pitchTrack, formants, medianF0, formantMedians };
   }, [state]);
 
   const handlePlayOriginal = async () => {

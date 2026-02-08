@@ -32,6 +32,15 @@ This checklist tracks the v0.1 work described in:
 
 ## Design notes (post v0.1)
 
+### One-sided complex STFT (storage-only)
+
+For real-valued time-domain signals, the FFT has conjugate symmetry. We expose an
+optional one-sided complex STFT representation purely to reduce storage cost for
+spectrograms and frame archives — it does not change the math, only how the data
+is stored. When one-sided complex frames are used, the library expands them to
+the full complex spectrum internally during inverse STFT using conjugate symmetry,
+so users never need to write their own reconstruction code.
+
 ### Fluent DSP pipelines (opt-in)
 
 Goal: add a pandas-like fluent interface for expert/power users while preserving the existing API ladder and tree-shaking rules.

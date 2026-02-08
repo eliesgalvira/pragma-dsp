@@ -7,7 +7,7 @@
  */
 import { FluentFFT } from "pragma-dsp/xform/fourier-fluent";
 import { assertNonZero, type NonZero } from "pragma-dsp/fluent";
-import type { ComplexArray } from "pragma-dsp/core";
+import { createComplexArray, type ComplexArray } from "pragma-dsp/core";
 
 export type EditKind =
   | { type: "scale"; factor: number }
@@ -37,14 +37,15 @@ export function applySpectralEdit(
   edit: EditKind
 ): { edited: Float64Array; editedComplex: ComplexArray } {
   const fft = new FluentFFT(fftSize);
+  const out = createComplexArray(fftSize);
 
   switch (edit.type) {
     case "scale": {
       const s = edit.factor;
       assertNonZero(s);
       const chain = fft.forward(samples).scale(s);
-      const editedComplex = chain.clone().unwrap();
-      const result = chain.inverse();
+      const editedComplex = chain.unwrap();
+      const result = chain.inverseInto(out);
       return { edited: result.real, editedComplex };
     }
 
@@ -53,15 +54,15 @@ export function applySpectralEdit(
       // mulScalar(0, 1) — 1 is NonZero so im param preserves invertibility
       const one = 1 as NonZero; // 1 is trivially nonzero
       const chain = fft.forward(samples).mulScalar(0, one);
-      const editedComplex = chain.clone().unwrap();
-      const result = chain.inverse();
+      const editedComplex = chain.unwrap();
+      const result = chain.inverseInto(out);
       return { edited: result.real, editedComplex };
     }
 
     case "conjugate": {
       const chain = fft.forward(samples).conj();
-      const editedComplex = chain.clone().unwrap();
-      const result = chain.inverse();
+      const editedComplex = chain.unwrap();
+      const result = chain.inverseInto(out);
       return { edited: result.real, editedComplex };
     }
 
@@ -69,8 +70,8 @@ export function applySpectralEdit(
       const s = -1;
       assertNonZero(s);
       const chain = fft.forward(samples).scale(s);
-      const editedComplex = chain.clone().unwrap();
-      const result = chain.inverse();
+      const editedComplex = chain.unwrap();
+      const result = chain.inverseInto(out);
       return { edited: result.real, editedComplex };
     }
 
@@ -78,8 +79,8 @@ export function applySpectralEdit(
       const s = edit.factor;
       assertNonZero(s);
       const chain = fft.forward(samples).scale(s).conj();
-      const editedComplex = chain.clone().unwrap();
-      const result = chain.inverse();
+      const editedComplex = chain.unwrap();
+      const result = chain.inverseInto(out);
       return { edited: result.real, editedComplex };
     }
   }
