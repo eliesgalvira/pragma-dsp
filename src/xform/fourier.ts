@@ -5,7 +5,8 @@ import {
   type ComplexArray,
   Radix2Fft,
   createComplexArray,
-  isPowerOfTwo
+  isPowerOfTwo,
+  nextPowerOfTwo
 } from "../core/fft.js";
 
 export type WindowType = "rect" | "hann" | "hamming" | "blackman";
@@ -162,4 +163,49 @@ export const binFrequencies = (
     result[i] = i * scale;
   }
   return result;
+};
+
+export type AutocorrelationOptions = {
+  /** Override FFT size (must be power of two and >= samples length). */
+  fftSize?: number;
+};
+
+/**
+ * Autocorrelation via Wiener–Khinchin:
+ *   R(τ) = IFFT( |FFT(x)|² )
+ */
+export const autocorrelation = (
+  samples: ArrayLike<number>,
+  options: AutocorrelationOptions = {}
+): Float64Array => {
+  if (samples.length <= 0) {
+    throw new Error("Autocorrelation requires a non-empty input signal.");
+  }
+
+  const fftSize = options.fftSize ?? nextPowerOfTwo(samples.length * 2);
+  if (!isPowerOfTwo(fftSize)) {
+    throw new Error(`FFT size must be power of two, got ${fftSize}`);
+  }
+  if (fftSize < samples.length) {
+    throw new Error(
+      `FFT size must be >= samples length (${samples.length}), got ${fftSize}`
+    );
+  }
+
+  const fft = new FFT(fftSize);
+  const input = new Float64Array(fftSize);
+  for (let i = 0; i < samples.length; i += 1) {
+    input[i] = samples[i] ?? 0;
+  }
+
+  const spectrum = fft.forward(input);
+  const power = createComplexArray(fftSize);
+  for (let k = 0; k < fftSize; k += 1) {
+    const re = spectrum.real[k] ?? 0;
+    const im = spectrum.imag[k] ?? 0;
+    power.real[k] = re * re + im * im;
+  }
+
+  const autocorr = fft.inverse(power);
+  return autocorr.real;
 };

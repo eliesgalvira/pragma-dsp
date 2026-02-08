@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { applySpectralEdit, EDIT_PRESETS, type EditKind } from "../dsp/edits";
-import { computeStft } from "../dsp/stft";
+import { stft } from "pragma-dsp/xform/stft";
 import { WaveformCanvas } from "./WaveformCanvas";
 import { SpectrogramCanvas } from "./SpectrogramCanvas";
 import { playSignal } from "../audio/record";
@@ -45,18 +45,28 @@ export function SpectrogramEditor({ samples, sampleRate, fftSize }: Props) {
       selectedEdit
     );
 
-    // Trim to original length
+    // Trim to original length.
+    // Conjugation in frequency domain time-reverses the padded signal,
+    // so take the tail to avoid leading zero padding in the result.
+    const trimOffset =
+      selectedEdit.type === "conjugate" ||
+      selectedEdit.type === "scale_and_conjugate"
+        ? paddedSize - samples.length
+        : 0;
     const trimmed = new Float32Array(samples.length);
-    for (let i = 0; i < samples.length; i++) trimmed[i] = edited[i]!;
+    for (let i = 0; i < samples.length; i++) {
+      trimmed[i] = edited[trimOffset + i]!;
+    }
 
     // Compute STFT of edited signal for spectrogram display
-    const stft = computeStft(trimmed, {
+    const stftResult = stft(trimmed, {
       fftSize,
       sampleRate,
       window: "hann",
+      complexSides: "one",
     });
 
-    return { editedSignal: trimmed, editedStft: stft };
+    return { editedSignal: trimmed, editedStft: stftResult };
   }, [samples, sampleRate, fftSize, selectedEdit]);
 
   // Compute difference signal

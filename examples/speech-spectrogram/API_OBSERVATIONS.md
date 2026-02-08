@@ -147,3 +147,26 @@ You must `.clone()` before `.inverse()` if you want to keep the edited frequency
 ## Overall assessment
 
 pragma-dsp's "API ladder" design genuinely works. The beginner rung (`spectrum()`) got us a quick result; the power rung (`FFT` + helpers) gave us full control for STFT; the fluent rung (`FluentFFT`) made the spectrogram editor feel like writing math. The main gap is the missing middle ground between "one frame" and "many overlapping frames" — i.e., STFT — which is already on the v0.2 roadmap. The library is a good foundation; the friction points are addressable without breaking changes.
+
+---
+
+## After rewrite (with new APIs)
+
+### What improved
+1. **STFT is now a first-class rung**
+   - The example no longer ships a custom loop; `stft()` handles hop math, windowing, and returns frames/times/frequencies.
+2. **Beginner → power bridge is smoother**
+   - `spectrum({ returnComplex: true })` keeps the raw FFT for edit/invert workflows without rewriting pipelines.
+3. **Pitch and formants are less boilerplate**
+   - `autocorrelation()` replaced the manual FFT → |·|² → IFFT steps.
+   - `spectralEnvelope()` eliminated the hand-rolled moving-average code.
+4. **Fluent inverse ceremony reduced**
+   - `inverseInto(out)` makes the “keep spectrum + inverse” workflow explicit without `.clone()` boilerplate.
+
+### New or remaining pain points
+1. **STFT does not accept a cached FFT kernel**
+   - For hot loops, it would be helpful to allow passing a prebuilt `FFT` instance to avoid reallocation overhead.
+2. **dB scaling now built-in**
+   - `magnitudeToDb()` lives in `pragma-dsp/analysis`, so the example no longer carries its own helper.
+3. **One-sided complex spectra**
+   - `stft()` returns full complex bins but only one-sided magnitudes/phases. For edit workflows, a one-sided complex option might be useful.

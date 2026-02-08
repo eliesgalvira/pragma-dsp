@@ -10,7 +10,7 @@ import {
   magnitude,
   phase
 } from "../xform/fourier.js";
-import { nextPowerOfTwo } from "../core/fft.js";
+import { nextPowerOfTwo, type ComplexArray } from "../core/fft.js";
 
 export type SpectrumPeak = {
   index: number;
@@ -26,11 +26,16 @@ export type SpectrumResult = {
   peak: SpectrumPeak;
 };
 
+export type SpectrumResultComplex = SpectrumResult & {
+  complex: ComplexArray;
+};
+
 export type SpectrumOptions = {
   sampleRate?: number;
   fftSize?: number;
   window?: WindowType;
   sides?: FftSides;
+  returnComplex?: boolean;
 };
 
 const buildFrame = (input: ArrayLike<number>, size: number): Float64Array => {
@@ -104,10 +109,18 @@ const findPeak = (
   };
 };
 
-export const spectrum = (
+export function spectrum(
+  samples: ArrayLike<number>,
+  options: SpectrumOptions & { returnComplex: true }
+): SpectrumResultComplex;
+export function spectrum(
+  samples: ArrayLike<number>,
+  options?: SpectrumOptions
+): SpectrumResult;
+export function spectrum(
   samples: ArrayLike<number>,
   options: SpectrumOptions = {}
-): SpectrumResult => {
+): SpectrumResult | SpectrumResultComplex {
   const sampleRate = options.sampleRate ?? 1;
   const sides: FftSides = options.sides ?? "one";
   const targetSize = options.fftSize ?? nextPowerOfTwo(samples.length);
@@ -133,10 +146,16 @@ export const spectrum = (
   const peak = findPeak(amplitude, frequencies);
   peak.phase = phaseBins[peak.index] ?? 0;
 
-  return {
+  const result: SpectrumResult | SpectrumResultComplex = {
     frequencies,
     amplitude,
     phase: phaseBins,
     peak
   };
+
+  if (options.returnComplex) {
+    return { ...result, complex: spectrumComplex };
+  }
+
+  return result;
 };

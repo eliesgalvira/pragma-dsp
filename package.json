@@ -14,42 +14,82 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
+      "import": {
+        "development": "./src/index.ts",
+        "default": "./dist/index.mjs"
+      },
       "require": "./dist/index.cjs"
     },
     "./xform": {
       "types": "./dist/xform/index.d.ts",
-      "import": "./dist/xform/index.mjs",
+      "import": {
+        "development": "./src/xform/index.ts",
+        "default": "./dist/xform/index.mjs"
+      },
       "require": "./dist/xform/index.cjs"
     },
     "./xform/fourier": {
       "types": "./dist/xform/fourier.d.ts",
-      "import": "./dist/xform/fourier.mjs",
+      "import": {
+        "development": "./src/xform/fourier.ts",
+        "default": "./dist/xform/fourier.mjs"
+      },
       "require": "./dist/xform/fourier.cjs"
+    },
+    "./xform/stft": {
+      "types": "./dist/xform/stft.d.ts",
+      "import": {
+        "development": "./src/xform/stft.ts",
+        "default": "./dist/xform/stft.mjs"
+      },
+      "require": "./dist/xform/stft.cjs"
     },
     "./core": {
       "types": "./dist/core/index.d.ts",
-      "import": "./dist/core/index.mjs",
+      "import": {
+        "development": "./src/core/index.ts",
+        "default": "./dist/core/index.mjs"
+      },
       "require": "./dist/core/index.cjs"
     },
     "./effect": {
       "types": "./dist/effect/index.d.ts",
-      "import": "./dist/effect/index.mjs",
+      "import": {
+        "development": "./src/effect/index.ts",
+        "default": "./dist/effect/index.mjs"
+      },
       "require": "./dist/effect/index.cjs"
     },
     "./math/complex": {
       "types": "./dist/math/index.d.ts",
-      "import": "./dist/math/index.mjs",
+      "import": {
+        "development": "./src/math/index.ts",
+        "default": "./dist/math/index.mjs"
+      },
       "require": "./dist/math/index.cjs"
     },
     "./fluent": {
       "types": "./dist/fluent/index.d.ts",
-      "import": "./dist/fluent/index.mjs",
+      "import": {
+        "development": "./src/fluent/index.ts",
+        "default": "./dist/fluent/index.mjs"
+      },
       "require": "./dist/fluent/index.cjs"
+    },
+    "./analysis": {
+      "types": "./dist/analysis/index.d.ts",
+      "import": {
+        "development": "./src/analysis/index.ts",
+        "default": "./dist/analysis/index.mjs"
+      },
+      "require": "./dist/analysis/index.cjs"
     },
     "./xform/fourier-fluent": {
       "types": "./dist/xform/fourier-fluent.d.ts",
-      "import": "./dist/xform/fourier-fluent.mjs",
+      "import": {
+        "development": "./src/xform/fourier-fluent.ts",
+        "default": "./dist/xform/fourier-fluent.mjs"
+      },
       "require": "./dist/xform/fourier-fluent.cjs"
     }
   },
@@ -68,7 +108,7 @@
     "test:watch": "vitest",
     "test:reallife": "vitest run test/reallife/",
     "bench": "node --import tsx bench/run.ts",
-    "gen:fixtures": "uv run --directory scripts python gen_fixtures.py --overwrite",
+    "gen:fixtures": "uv run --directory scripts python gen_fixtures.py --overwrite --out ../test/fixtures/pragma-dsp.v0.1.json",
     "gen:refs": "uv run --directory scripts python gen_reallife_refs.py --out ../test/reallife/references/"
   },
   "devDependencies": {

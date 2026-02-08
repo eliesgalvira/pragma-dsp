@@ -7,16 +7,8 @@
  * Formants: smooth the spectral envelope with a moving average,
  *           then pick the first N local maxima → F1, F2, F3, ...
  */
-import { FFT, magnitude } from "pragma-dsp/xform/fourier";
-import type { ComplexArray } from "pragma-dsp/core";
-
-// ── Helpers ──────────────────────────────────────────────────────────
-
-function nextPow2(n: number): number {
-  let p = 1;
-  while (p < n) p <<= 1;
-  return p;
-}
+import { autocorrelation } from "pragma-dsp/xform/fourier";
+import { spectralEnvelope } from "pragma-dsp/analysis";
 
 // ── Pitch detection (autocorrelation via FFT) ────────────────────────
 
@@ -39,26 +31,7 @@ export function detectPitch(
   const minF0 = opts.minF0 ?? 50; // Hz
   const maxF0 = opts.maxF0 ?? 600; // Hz
 
-  const N = nextPow2(samples.length * 2); // zero-pad for linear autocorrelation
-  const fft = new FFT(N);
-
-  // Forward FFT of zero-padded signal
-  const input = new Float64Array(N);
-  for (let i = 0; i < samples.length; i++) input[i] = samples[i]!;
-  const spectrum = fft.forward(input);
-
-  // Power spectrum: |X[k]|²  → stored back in a ComplexArray (real part only)
-  const power: ComplexArray = { real: new Float64Array(N), imag: new Float64Array(N) };
-  for (let k = 0; k < N; k++) {
-    const re = spectrum.real[k]!;
-    const im = spectrum.imag[k]!;
-    power.real[k] = re * re + im * im;
-    // imag stays 0
-  }
-
-  // IFFT → autocorrelation
-  const autocorr = fft.inverse(power);
-  const r = autocorr.real;
+  const r = autocorrelation(samples);
 
   // r[0] is the signal energy (autocorrelation at lag 0)
   const r0 = r[0]!;
@@ -119,17 +92,7 @@ export function detectFormants(
   const N = magnitudes.length;
 
   // ── Smooth with moving average ────
-  const half = Math.floor(smoothingWidth / 2);
-  const envelope = new Float64Array(N);
-  for (let i = 0; i < N; i++) {
-    let sum = 0;
-    let count = 0;
-    for (let j = Math.max(0, i - half); j <= Math.min(N - 1, i + half); j++) {
-      sum += magnitudes[j]!;
-      count++;
-    }
-    envelope[i] = sum / count;
-  }
+  const envelope = spectralEnvelope(magnitudes, { smoothingWidth });
 
   // ── Pick local maxima within freq range ────
   const peaks: { freq: number; mag: number }[] = [];
