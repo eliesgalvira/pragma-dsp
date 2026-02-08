@@ -29,3 +29,159 @@ This checklist tracks the v0.1 work described in:
 - [x] Build surface: tree-shaking, exports, optional effect, README examples.
   - PLAN: `Tree-shaking requirements`
   - PLAN: `Module boundaries (API structure + project structure)`
+
+## Design notes (post v0.1)
+
+### Fluent DSP pipelines (opt-in)
+
+Goal: add a pandas-like fluent interface for expert/power users while preserving the existing API ladder and tree-shaking rules.
+
+#### Non-goals
+- Do not change the existing power Fourier API shape (`pragma-dsp/xform/fourier` returning plain `{ real, imag }`).
+- Do not attach complex/discrete math operations directly onto FFT core types in a way that forces them to be bundled for everyone.
+
+#### Module boundaries
+- Complex and discrete math operations should live in their own tree-shakeable modules (e.g. `pragma-dsp/math/complex`, and later `pragma-dsp/math/field` or similar).
+- Fluent chaining should be an opt-in entrypoint (subpath export), so users who import `pragma-dsp/xform/fourier` do not pay for fluent wrappers.
+  - Rationale: bundlers generally do not tree-shake individual class/prototype methods reliably; fluent method surfaces can otherwise “stick” in bundles.
+
+#### Representation
+- Complex vectors remain the split-array representation used everywhere else:
+  - `{ real: Float64Array; imag: Float64Array }`
+- Fluent wrappers should be thin adapters over that representation, primarily responsible for:
+  - ergonomic chaining
+  - holding optional transform context needed for `.inverse()`
+  - calling pure math ops underneath
+
+#### Fluent semantics (important)
+- Fluent operations are **mutating by default**.
+  - This must be explicit in user docs and JSDoc.
+  - The wrapper should make aliasing/ownership clear: chaining mutates the same underlying arrays unless the user explicitly clones/copies.
+- Provide escape hatches for users who want persistence:
+  - `clone()` and/or `copyInto(out)`
+  - optional `into(out)` forms for writing results into caller-owned buffers
+
+#### `.inverse()` and TypeScript safety (typestate)
+
+Fluent chaining wants `.inverse()` at the end of a math chain (e.g. `fft.forward(x).scale(2).mul(z).conj().inverse()`).
+
+We want TypeScript to reject clearly-invalid chains at compile time:
+- missing FFT context (no known inverse)
+- information-losing operations (e.g. magnitude/phase projections)
+- shape-changing operations (e.g. dropping bins)
+
+Recommended approach: a lightweight typestate generic parameter on the fluent wrapper, and gate `.inverse()` via a `this:`-parameter constraint.
+
+State dimensions (keep minimal; expand only if it earns its weight):
+- `kind`: `"complex" | "real"` (operations like `magnitude()` flip to `real` and should remove `.inverse()`)
+- `hasFft`: `true | false` (only chains created from a fluent FFT entrypoint have `.inverse()` available)
+- `invert`: `"yes" | "no" | "maybe"`
+  - `"no"` for known non-invertible ops (info loss)
+  - `"maybe"` for runtime-dependent invertibility (e.g. divide by user-provided scalar)
+- `len`: `"same" | "changed"` (shape changes disable `.inverse()`)
+
+Important: TypeScript cannot generally prove numeric properties like “nonzero” for arbitrary `number`. Treat these as runtime constraints.
+
+##### Runtime-dependent invertibility (assertions + checked inverse)
+- Use branded/opaque types + assertion helpers for constraints that can be checked at runtime and then reflected into types:
+  - Example: `NonZero<number>` with `assertNonZero(x): asserts x is NonZero<number>`
+- Provide a checked inverse path for `invert: "maybe"` chains:
+  - `inverseChecked(): { ok: true; value: Float64Array } | { ok: false; error: InverseError }`
+  - Optional Effect integration: `inverseFx(): Effect<InverseError, Float64Array>`
+
+This allows:
+- `.inverse()` to remain a “statically safe” fast path
+- `.inverseChecked()` / `.inverseFx()` to be the “runtime safe” path
+
+##### Future note (overkill for now)
+- It is possible to add overloads so literal operations like `.scale(0 as const)` immediately flip `invert` to `"no"`.
+  - This is intentionally deferred: it complicates the type surface for marginal gain early on.
+
+#### Naming
+- Prefer `scale()` (scalar) and `mul()` (complex-by-complex).
+- Prefer `conj()` over `con()` to avoid ambiguity.
+
+#### NTT alignment
+- Keeping complex/discrete math in separate entrypoints avoids coupling numeric FFT-specific choices to future finite-field / NTT designs.
+- NTT math should not reuse Float64 complex-vector types; it will likely need field-specific representations.
+
+### Fluent implementation status
+
+Implemented. Files and decisions below.
+
+#### New files
+
+| File | Role |
+|------|------|
+| `src/math/complex.ts` | Pure complex-vector arithmetic (scale, add, sub, mul, mulScalar, div, divScalar, conj, mag, arg, copy, zero). Every op has an allocating form and an `Into` form that writes into a caller-provided buffer. No FFT dependency. |
+| `src/math/index.ts` | Barrel export for `math/complex`. |
+| `src/fluent/complex.ts` | `ComplexChain<S>` fluent wrapper with typestate generic. Mutating-by-default. Branded `NonZero` type and `assertNonZero`/`asNonZero` helpers. `InverseReady` typestate constraint. `chain()` factory for raw data without FFT context. |
+| `src/fluent/index.ts` | Barrel export for fluent types, `chain`, `NonZero`, assertions. |
+| `src/xform/fourier-fluent.ts` | `FluentFFT` class: wraps `FFT`, `.forward()` returns `ComplexChain<FftForwardState>` with bound inverse context. Opt-in subpath export. |
+
+#### New subpath exports (package.json + tsdown)
+
+- `pragma-dsp/math/complex` → `src/math/index.ts`
+- `pragma-dsp/fluent` → `src/fluent/index.ts`
+- `pragma-dsp/xform/fourier-fluent` → `src/xform/fourier-fluent.ts`
+
+#### Typestate design (as implemented)
+
+`ComplexChain<S extends ChainState>` where:
+```ts
+type ChainState = {
+  kind: "complex" | "real";
+  hasFft: boolean;
+  invert: "yes" | "no" | "maybe";
+  len: "same" | "changed";
+};
+```
+
+Key states:
+- `DefaultState` = `{ kind:"complex", hasFft:false, invert:"yes", len:"same" }` — from `chain(data)`
+- `FftForwardState` = `{ kind:"complex", hasFft:true, invert:"yes", len:"same" }` — from `FluentFFT.forward()`
+- `InverseReady` = `{ kind:"complex", hasFft:true, invert:"yes", len:"same" }` — required by `.inverse()`
+
+Method gating uses `this:` parameter constraints:
+- `.inverse(this: ComplexChain<InverseReady>, out?)` — only callable when typestate is InverseReady.
+- `.inverseChecked(this: ComplexChain<S & { hasFft: true }>, out?)` — callable for any chain with FFT context, returns `InverseResult` union.
+
+State transitions via method return types:
+- `scale(s: NonZero)` → preserves current state `S` (invertibility maintained)
+- `scale(s: number)` → `Omit<S, "invert"> & { invert: "maybe" }` (invertibility unknown)
+- `conj()` → preserves `S` (self-inverse)
+- `mul(b)`, `div(b)`, `add(b)`, `sub(b)` → `invert: "maybe"`
+- `mulScalar(re: NonZero, im)` or `mulScalar(re, im: NonZero)` → preserves `S` (at least one component nonzero guarantees nonzero scalar)
+- `divScalar` — same pattern as `mulScalar`
+- `mag()`, `arg()` — terminal projections returning `Float64Array`, no further chaining on complex
+
+#### Allocation semantics (as implemented)
+
+- **Fluent ops mutate in-place by default.** Documented in JSDoc on `ComplexChain`.
+- `clone()` creates an independent deep copy (new typed arrays, same typestate + inverse context).
+- `unwrap()` returns the underlying `{ real, imag }` without copying.
+- Pure math functions in `math/complex` have both allocating and `Into` variants, so expert users can compose without the fluent wrapper.
+
+#### Branded NonZero type (as implemented)
+
+```ts
+declare const _nonzero: unique symbol;
+type NonZero = number & { readonly [_nonzero]: true };
+```
+
+- `assertNonZero(x: number): asserts x is NonZero` — throws if `x === 0`.
+- `asNonZero(x: number): NonZero | null` — returns `null` for zero.
+- Method overloads on `scale`, `mulScalar`, `divScalar` accept `NonZero` to preserve `invert: "yes"`.
+
+#### Tests
+
+- `test/math/complex.test.ts` — 20 tests covering all pure math ops.
+- `test/fluent/chain.test.ts` — 25 tests covering FluentFFT round-trips, chain factory, all fluent ops, NonZero branding, inverseChecked, and a realistic convolution pipeline.
+
+#### What is NOT yet implemented (future work)
+
+- `inverseFx()` returning `Effect<InverseError, ...>` — deferred until Effect integration for fluent is requested.
+- Literal-zero overload gating (e.g. `.scale(0 as const)` → `invert: "no"`) — intentionally deferred as overkill.
+- `into(out)` variants on fluent chain methods — can be added when expert zero-alloc chaining in loops is needed.
+- Ping-pong scratch / `.plan()` for allocation-free pipelines — deferred until STFT or realtime use cases land.
+- `domain` state dimension (`"time" | "freq"`) — omitted for now; can be added when cross-domain chaining (e.g. STFT) arrives.
