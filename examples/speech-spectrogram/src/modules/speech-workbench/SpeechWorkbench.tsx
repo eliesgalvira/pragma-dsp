@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import type * as React from "react";
 import {
   Mic,
@@ -6,19 +6,6 @@ import {
   Square,
 } from "lucide-react";
 
-import {
-  AudioPlayer,
-  AudioPlayerControlBar,
-  AudioPlayerDurationDisplay,
-  AudioPlayerElement,
-  AudioPlayerMuteButton,
-  AudioPlayerPlayButton,
-  AudioPlayerSeekBackwardButton,
-  AudioPlayerSeekForwardButton,
-  AudioPlayerTimeDisplay,
-  AudioPlayerTimeRange,
-  AudioPlayerVolumeRange,
-} from "@/components/ai-elements/audio-player";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { Button } from "../../components/ui/button";
 import {
@@ -33,6 +20,10 @@ import { cn } from "../../lib/utils";
 import type { AudioSamples } from "../audio";
 import { SpectrogramCanvas, WaveformCanvas } from "../signal-views";
 import { useSpeechWorkbench } from "./useSpeechWorkbench";
+
+const AudioPlayerPanel = lazy(() =>
+  import("./AudioPlayerPanel").then((module) => ({ default: module.AudioPlayerPanel })),
+);
 
 function InlineSpinner({
   className,
@@ -197,7 +188,7 @@ const peak = (samples: Float32Array) => {
   return max;
 };
 
-const toWavDataUrl = ({ samples, sampleRate }: AudioSamples) => {
+const toWavBlob = ({ samples, sampleRate }: AudioSamples) => {
   const bytesPerSample = 2;
   const dataSize = samples.length * bytesPerSample;
   const buffer = new ArrayBuffer(44 + dataSize);
@@ -231,15 +222,7 @@ const toWavDataUrl = ({ samples, sampleRate }: AudioSamples) => {
     offset += 2;
   }
 
-  const bytes = new Uint8Array(buffer);
-  let binary = "";
-  const chunkSize = 0x8000;
-  for (let index = 0; index < bytes.length; index += chunkSize) {
-    const chunk = bytes.subarray(index, Math.min(index + chunkSize, bytes.length));
-    binary += String.fromCharCode(...chunk);
-  }
-
-  return `data:audio/wav;base64,${btoa(binary)}`;
+  return new Blob([buffer], { type: "audio/wav" });
 };
 
 export function SpeechWorkbench() {
@@ -313,7 +296,17 @@ export function SpeechWorkbench() {
   }, [hasActiveEdit, showOriginalReference]);
 
   useEffect(() => {
-    setAudioSrc(displayedAudio ? toWavDataUrl(displayedAudio) : null);
+    if (!displayedAudio) {
+      setAudioSrc(null);
+      return;
+    }
+
+    const nextUrl = URL.createObjectURL(toWavBlob(displayedAudio));
+    setAudioSrc(nextUrl);
+
+    return () => {
+      URL.revokeObjectURL(nextUrl);
+    };
   }, [displayedAudio]);
 
   return (
@@ -358,8 +351,10 @@ export function SpeechWorkbench() {
                       variant={state.phase === "analyzing" ? "secondary" : "default"}
                       className={
                         state.phase === "analyzing"
-                          ? "min-w-[168px] bg-sky-900 text-sky-50 hover:bg-sky-900"
-                          : "min-w-[168px]"
+                          ? "min-w-[168px] bg-zinc-100 text-zinc-950 hover:bg-zinc-300"
+                          : state.phase === "starting"
+                            ? "min-w-[168px] bg-zinc-300 text-zinc-950 hover:bg-zinc-300"
+                            : "min-w-[168px] bg-zinc-100 text-zinc-950 hover:bg-zinc-300"
                       }
                     >
                       {state.phase === "starting" ? (
@@ -677,25 +672,15 @@ export function SpeechWorkbench() {
                         <Skeleton className="h-9 w-full" />
                       </div>
                     ) : audioSrc ? (
-                      <div className="flex h-[40px] items-center">
-                        <AudioPlayer className="w-full">
-                          <AudioPlayerElement
-                            key={audioSrc}
-                            src={audioSrc}
-                            preload="metadata"
-                          />
-                          <AudioPlayerControlBar className="flex w-full flex-wrap items-center gap-2">
-                            <AudioPlayerPlayButton />
-                            <AudioPlayerSeekBackwardButton />
-                            <AudioPlayerSeekForwardButton />
-                            <AudioPlayerTimeDisplay showDuration={false} />
-                            <AudioPlayerTimeRange className="min-w-[160px] flex-1" />
-                            <AudioPlayerDurationDisplay />
-                            <AudioPlayerMuteButton />
-                            <AudioPlayerVolumeRange className="w-20" />
-                          </AudioPlayerControlBar>
-                        </AudioPlayer>
-                      </div>
+                      <Suspense
+                        fallback={
+                          <div className="flex h-[40px] items-center">
+                            <Skeleton className="h-9 w-full" />
+                          </div>
+                        }
+                      >
+                        <AudioPlayerPanel audioSrc={audioSrc} />
+                      </Suspense>
                     ) : (
                       <div className="flex min-h-20 items-center justify-center text-center">
                         <div className="space-y-1">

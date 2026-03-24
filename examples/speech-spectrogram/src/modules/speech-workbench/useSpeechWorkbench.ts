@@ -8,7 +8,7 @@ import {
 } from "react";
 import { Effect, Layer, ManagedRuntime } from "effect";
 
-import { AudioInput, AudioOutput, type AudioPreviewFrame, type RecordingSession } from "../audio";
+import { AudioInput, type AudioPreviewFrame, type RecordingSession } from "../audio";
 import {
   DEFAULT_ANALYSIS_CONFIG,
   SPECTRAL_EDIT_PRESETS,
@@ -22,7 +22,7 @@ import {
   type WorkbenchState,
 } from "./model";
 
-const appLayer = Layer.mergeAll(AudioInput.layer, AudioOutput.layer, SpeechAnalysis.layer);
+const appLayer = Layer.mergeAll(AudioInput.layer, SpeechAnalysis.layer);
 const appRuntime = ManagedRuntime.make(appLayer);
 
 const formatError = (error: unknown) =>
@@ -47,6 +47,8 @@ export function useSpeechWorkbench() {
 
   const sessionRef = useRef<RecordingSession | null>(null);
   const liveAnalysisTokenRef = useRef(0);
+  const liveAnalysisInFlightRef = useRef(false);
+  const pendingLiveFrameRef = useRef<AudioPreviewFrame | null>(null);
   const [state, setState] = useState<WorkbenchState>(() => initialWorkbenchState());
   const runtime = appRuntime;
 
@@ -109,13 +111,24 @@ export function useSpeechWorkbench() {
         phase: current.recorded ? "ready" : "idle",
         error: message,
         microphonePermission: permission ?? current.microphonePermission,
-        playing: null,
         applyingEdit: false,
       }));
     });
   });
 
   const analyzeLiveFrame = useEffectEvent((frame: AudioPreviewFrame) => {
+    pendingLiveFrameRef.current = frame;
+    if (liveAnalysisInFlightRef.current) {
+      return;
+    }
+
+    const nextFrame = pendingLiveFrameRef.current;
+    if (!nextFrame) {
+      return;
+    }
+
+    pendingLiveFrameRef.current = null;
+    liveAnalysisInFlightRef.current = true;
     const token = ++liveAnalysisTokenRef.current;
 
     void runtime
@@ -123,10 +136,10 @@ export function useSpeechWorkbench() {
         Effect.gen(function* () {
           const analysis = yield* SpeechAnalysis;
           const result = yield* analysis.analyzeSignal(
-            { samples: frame.samples, sampleRate: frame.sampleRate },
+            { samples: nextFrame.samples, sampleRate: nextFrame.sampleRate },
             DEFAULT_ANALYSIS_CONFIG,
           );
-          const live: LiveAnalysis = { frame, analysis: result };
+          const live: LiveAnalysis = { frame: nextFrame, analysis: result };
           return live;
         }),
       )
@@ -144,7 +157,13 @@ export function useSpeechWorkbench() {
           });
         });
       })
-      .catch(handleError);
+      .catch(handleError)
+      .finally(() => {
+        liveAnalysisInFlightRef.current = false;
+        if (pendingLiveFrameRef.current) {
+          analyzeLiveFrame(pendingLiveFrameRef.current);
+        }
+      });
   });
 
   const startRecording = useCallback(() => {
@@ -153,7 +172,6 @@ export function useSpeechWorkbench() {
         ...current,
         phase: "starting",
         error: null,
-        playing: null,
         applyingEdit: false,
         microphonePermission:
           current.microphonePermission === "prompt"
@@ -182,6 +200,7 @@ export function useSpeechWorkbench() {
             ...current,
             phase: "recording",
             microphonePermission: "granted",
+            editedFor: null,
             live: null,
             recorded: null,
             analysis: null,
@@ -201,6 +220,8 @@ export function useSpeechWorkbench() {
     }
 
     liveAnalysisTokenRef.current += 1;
+    pendingLiveFrameRef.current = null;
+    liveAnalysisInFlightRef.current = false;
     startTransition(() => {
       setState((current) => ({
         ...initialWorkbenchState(),
@@ -238,6 +259,7 @@ export function useSpeechWorkbench() {
             phase: "ready",
             applyingEdit: false,
             microphonePermission: "granted",
+            editedFor: state.selectedEdit,
             live: null,
             recorded: audio,
             analysis,
@@ -266,6 +288,9 @@ export function useSpeechWorkbench() {
     if (state.phase !== "ready" || !state.recorded) {
       return;
     }
+    if (state.editedFor === state.selectedEdit) {
+      return;
+    }
 
     const audio = state.recorded;
     const edit = state.selectedEdit;
@@ -288,7 +313,7 @@ export function useSpeechWorkbench() {
             if (current.recorded !== audio || current.selectedEdit !== edit) {
               return current;
             }
-            return { ...current, edited, applyingEdit: false };
+            return { ...current, edited, editedFor: edit, applyingEdit: false };
           });
         });
       })
@@ -301,32 +326,7 @@ export function useSpeechWorkbench() {
     return () => {
       cancelled = true;
     };
-  }, [handleError, runtime, state.phase, state.recorded, state.selectedEdit]);
-
-  const play = useEffectEvent((which: "original" | "edited") => {
-    const audio = which === "original" ? state.recorded : state.edited?.audio;
-    if (!audio) {
-      return;
-    }
-
-    startTransition(() => {
-      setState((current) => ({ ...current, playing: which, error: null }));
-    });
-
-    void runtime
-      .runPromise(
-        Effect.gen(function* () {
-          const output = yield* AudioOutput;
-          yield* output.play(audio);
-        }),
-      )
-      .then(() => {
-        startTransition(() => {
-          setState((current) => ({ ...current, playing: null }));
-        });
-      })
-      .catch(handleError);
-  });
+  }, [handleError, runtime, state.editedFor, state.phase, state.recorded, state.selectedEdit]);
 
   useEffect(() => {
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
@@ -412,7 +412,5 @@ export function useSpeechWorkbench() {
     stopRecording,
     reset,
     setSelectedEdit,
-    playOriginal: () => play("original"),
-    playEdited: () => play("edited"),
   };
 }

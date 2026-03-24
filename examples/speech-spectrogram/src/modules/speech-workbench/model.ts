@@ -22,10 +22,10 @@ export type LiveAnalysis = {
 export type WorkbenchState = {
   readonly phase: "idle" | "starting" | "recording" | "analyzing" | "ready";
   readonly error: string | null;
-  readonly playing: "original" | "edited" | null;
   readonly applyingEdit: boolean;
   readonly microphonePermission: MicrophonePermissionState;
   readonly selectedEdit: SpectralEditKind;
+  readonly editedFor: SpectralEditKind | null;
   readonly live: LiveAnalysis | null;
   readonly recorded: AudioSamples | null;
   readonly analysis: SignalAnalysis | null;
@@ -35,10 +35,10 @@ export type WorkbenchState = {
 export const initialWorkbenchState = (): WorkbenchState => ({
   phase: "idle",
   error: null,
-  playing: null,
   applyingEdit: false,
   microphonePermission: "unknown",
   selectedEdit: DEFAULT_SPECTRAL_EDIT,
+  editedFor: null,
   live: null,
   recorded: null,
   analysis: null,

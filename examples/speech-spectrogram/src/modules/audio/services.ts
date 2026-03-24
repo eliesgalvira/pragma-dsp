@@ -331,36 +331,3 @@ export class AudioInput extends ServiceMap.Service<
     }),
   });
 }
-
-export class AudioOutput extends ServiceMap.Service<
-  AudioOutput,
-  {
-    readonly play: (audio: AudioSamples) => Effect.Effect<void, AudioIoError>;
-  }
->()("@speech/audio/AudioOutput") {
-  static readonly layer = Layer.succeed(this)({
-    play: Effect.fn("AudioOutput.play")(function* (audio: AudioSamples) {
-      yield* Effect.tryPromise({
-        try: async () => {
-          const context = new AudioContext({ sampleRate: audio.sampleRate });
-
-          try {
-            const buffer = context.createBuffer(1, audio.samples.length, audio.sampleRate);
-            buffer.copyToChannel(new Float32Array(audio.samples), 0);
-            const source = context.createBufferSource();
-            source.buffer = buffer;
-            source.connect(context.destination);
-
-            await new Promise<void>((resolve) => {
-              source.addEventListener("ended", () => resolve(), { once: true });
-              source.start(0);
-            });
-          } finally {
-            await context.close().catch(() => undefined);
-          }
-        },
-        catch: (error) => toAudioIoError(error, "playback-failed"),
-      });
-    }),
-  });
-}
