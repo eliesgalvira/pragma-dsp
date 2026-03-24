@@ -3,21 +3,31 @@
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo",
     "target": "ES2023",
     "lib": ["ES2023"],
-    "module": "ESNext",
+    "module": "preserve",
     "types": ["node"],
     "skipLibCheck": true,
+    "incremental": true,
+    "composite": true,
 
     /* Bundler mode */
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
+    "rewriteRelativeImportExtensions": true,
     "moduleDetection": "force",
     "noEmit": true,
+    "plugins": [
+      {
+        "name": "@effect/language-service"
+      }
+    ],
 
     /* Linting */
     "strict": true,
+    "exactOptionalPropertyTypes": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
+    "noImplicitOverride": true,
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true

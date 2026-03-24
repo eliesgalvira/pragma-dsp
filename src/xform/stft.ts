@@ -148,8 +148,8 @@ export const istft = (
       const idx = start + i;
       if (idx >= output.length) break;
       const w = windowArray[i] ?? 0;
-      output[idx] += (time.real[i] ?? 0) * w;
-      denom[idx] += w * w;
+      output[idx] = (output[idx] ?? 0) + (time.real[i] ?? 0) * w;
+      denom[idx] = (denom[idx] ?? 0) + w * w;
     }
   }
 
@@ -254,13 +254,23 @@ export const stft = (
     complexSides,
     window,
     inverse: (opts = {}) =>
-      istft(frames, {
-        fftSize,
-        hopSize,
-        window,
-        complexSides,
-        outputLength: opts.outputLength,
-      }),
+      istft(
+        frames,
+        opts.outputLength === undefined
+          ? {
+              fftSize,
+              hopSize,
+              window,
+              complexSides,
+            }
+          : {
+              fftSize,
+              hopSize,
+              window,
+              complexSides,
+              outputLength: opts.outputLength,
+            }
+      ),
   };
   return result;
 };

@@ -3,29 +3,53 @@
 }
 
 :root {
-  font-family: system-ui, -apple-system, sans-serif;
+  font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
   line-height: 1.5;
-  color-scheme: dark;
-  color: #e0e0e0;
-  background-color: #0d1117;
+  color: #f7f5ef;
+  background:
+    radial-gradient(circle at top, rgba(63, 181, 173, 0.22), transparent 28%),
+    radial-gradient(circle at 20% 20%, rgba(255, 150, 85, 0.24), transparent 20%),
+    linear-gradient(180deg, #0d1518 0%, #11161f 45%, #160f0f 100%);
+  --surface: rgba(11, 18, 23, 0.74);
+  --surface-strong: rgba(10, 16, 20, 0.9);
+  --surface-soft: rgba(19, 31, 36, 0.72);
+  --border: rgba(158, 211, 203, 0.18);
+  --text: #f7f5ef;
+  --muted: #b6c2c0;
+  --accent: #54d4c4;
+  --accent-warm: #ff9d5c;
+  --danger: #ff6b6b;
+  --shadow: 0 28px 90px rgba(0, 0, 0, 0.32);
 }
 
 body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  background: transparent;
 }
 
-h1 {
-  font-size: 1.8em;
-  line-height: 1.2;
+#root {
+  min-height: 100vh;
 }
 
-h3 {
-  font-size: 1.1em;
+button,
+input,
+select,
+textarea {
+  font: inherit;
 }
 
 code {
   font-family: "JetBrains Mono", "Fira Code", monospace;
   font-size: 0.9em;
+}
+
+button {
+  border: 0;
+}
+
+canvas {
+  display: block;
+  max-width: 100%;
 }
