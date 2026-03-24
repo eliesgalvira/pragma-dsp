@@ -21,6 +21,8 @@ export function WaveformCanvas({
   amplitudeReference,
   className,
 }: WaveformCanvasProps) {
+  "use no memo";
+
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [measuredWidth, setMeasuredWidth] = useState(width ?? 0);
 

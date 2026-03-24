@@ -43,6 +43,8 @@ const permissionFromError = (error: unknown): MicrophonePermissionState | null =
 };
 
 export function useSpeechWorkbench() {
+  "use no memo";
+
   const sessionRef = useRef<RecordingSession | null>(null);
   const liveAnalysisTokenRef = useRef(0);
   const [state, setState] = useState<WorkbenchState>(() => initialWorkbenchState());

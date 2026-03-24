@@ -32,6 +32,8 @@ export function SpectrogramCanvas({
   maxFreqDisplay,
   className,
 }: SpectrogramCanvasProps) {
+  "use no memo";
+
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [measuredWidth, setMeasuredWidth] = useState(width ?? 0);
 
