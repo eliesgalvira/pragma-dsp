@@ -24,11 +24,11 @@ export function WaveformCanvas({
   "use no memo";
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [measuredWidth, setMeasuredWidth] = useState(width ?? 0);
+  const [measuredWidth, setMeasuredWidth] = useState(0);
+  const renderWidth = width ?? measuredWidth;
 
   useEffect(() => {
     if (width != null) {
-      setMeasuredWidth(width);
       return;
     }
 
@@ -54,7 +54,7 @@ export function WaveformCanvas({
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas || measuredWidth <= 0) {
+    if (!canvas || renderWidth <= 0) {
       return;
     }
 
@@ -64,19 +64,19 @@ export function WaveformCanvas({
     }
 
     const dpr = window.devicePixelRatio || 1;
-    canvas.width = measuredWidth * dpr;
+    canvas.width = renderWidth * dpr;
     canvas.height = height * dpr;
     context.setTransform(1, 0, 0, 1, 0, 0);
     context.scale(dpr, dpr);
 
     context.fillStyle = "#091217";
-    context.fillRect(0, 0, measuredWidth, height);
+    context.fillRect(0, 0, renderWidth, height);
 
     context.strokeStyle = "rgba(255, 255, 255, 0.08)";
     context.lineWidth = 1;
     context.beginPath();
     context.moveTo(0, height / 2);
-    context.lineTo(measuredWidth, height / 2);
+    context.lineTo(renderWidth, height / 2);
     context.stroke();
 
     if (samples.length > 0) {
@@ -87,7 +87,7 @@ export function WaveformCanvas({
 
       const scale = Math.max(amplitudeReference ?? peak, 1e-3);
 
-      const pixels = Math.max(1, Math.floor(measuredWidth));
+      const pixels = Math.max(1, Math.floor(renderWidth));
       const samplesPerPixel = Math.max(1, Math.ceil(samples.length / pixels));
 
       context.strokeStyle = color;
@@ -134,15 +134,15 @@ export function WaveformCanvas({
 
       for (let stepIndex = 0; stepIndex <= steps; stepIndex++) {
         const time = (duration / steps) * stepIndex;
-        const x = (measuredWidth / steps) * stepIndex;
+        const x = (renderWidth / steps) * stepIndex;
         context.fillText(
           `${time.toFixed(1)}s`,
-          Math.min(measuredWidth - 34, x + 4),
+          Math.min(renderWidth - 34, x + 4),
           height - 8,
         );
       }
     }
-  }, [amplitudeReference, color, height, label, measuredWidth, sampleRate, samples]);
+  }, [amplitudeReference, color, height, label, renderWidth, sampleRate, samples]);
 
   return (
     <canvas

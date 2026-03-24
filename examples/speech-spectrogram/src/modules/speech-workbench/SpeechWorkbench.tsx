@@ -307,11 +307,12 @@ export function SpeechWorkbench() {
     state.phase === "starting" ||
     state.phase === "analyzing";
   const hasActiveEdit = state.selectedEdit.type !== "identity";
+  const effectiveShowOriginalReference = hasActiveEdit && showOriginalReference;
   const appliedEditLabel = formatSpectralEditLabel(state.selectedEdit);
   const showEditedSignal =
     Boolean(ready) &&
     hasActiveEdit &&
-    !showOriginalReference &&
+    !effectiveShowOriginalReference &&
     Boolean(state.edited);
   const signalSectionTitle =
     state.phase === "recording" || !hasRecording ? "Live monitoring" : "Analysis";
@@ -327,7 +328,7 @@ export function SpeechWorkbench() {
   const editLoading =
     signalMode === "analysis" &&
     hasActiveEdit &&
-    !showOriginalReference &&
+    !effectiveShowOriginalReference &&
     state.applyingEdit;
   const valuePanelTitle =
     signalMode === "analysis" && (showEditedSignal || editLoading)
@@ -342,25 +343,6 @@ export function SpeechWorkbench() {
   const [audioSrc, setAudioSrc] = useState<string | null>(null);
 
   useEffect(() => {
-    if (state.selectedEdit.type === "identity") {
-      setDraftReal(1);
-      setDraftImaginary(0);
-      setDraftConjugate(false);
-      return;
-    }
-
-    setDraftReal(state.selectedEdit.real);
-    setDraftImaginary(state.selectedEdit.imaginary);
-    setDraftConjugate(state.selectedEdit.conjugate);
-  }, [state.selectedEdit]);
-
-  useEffect(() => {
-    if (!hasActiveEdit && showOriginalReference) {
-      setShowOriginalReference(false);
-    }
-  }, [hasActiveEdit, showOriginalReference]);
-
-  useEffect(() => {
     if (!displayedAudio) {
       setAudioSrc(null);
       return;
@@ -373,6 +355,23 @@ export function SpeechWorkbench() {
       URL.revokeObjectURL(nextUrl);
     };
   }, [displayedAudio]);
+
+  const resetDraftControls = () => {
+    setDraftReal(1);
+    setDraftImaginary(0);
+    setDraftConjugate(false);
+    setShowOriginalReference(false);
+  };
+
+  const handleStartRecording = () => {
+    resetDraftControls();
+    startRecording();
+  };
+
+  const handleReset = () => {
+    resetDraftControls();
+    reset();
+  };
 
   const applyTransformation = () => {
     const roundedReal = Number(draftReal.toFixed(2));
@@ -432,7 +431,7 @@ export function SpeechWorkbench() {
                 <div className="flex flex-wrap items-center gap-3">
                   {showPrimaryRecordButton && (
                     <Button
-                      onClick={startRecording}
+                      onClick={handleStartRecording}
                       disabled={state.phase === "starting" || state.phase === "analyzing"}
                       variant={state.phase === "analyzing" ? "secondary" : "default"}
                       className={
@@ -475,7 +474,7 @@ export function SpeechWorkbench() {
 
                   {hasRecording && (
                     <>
-                      <Button variant="outline" onClick={reset}>
+                      <Button variant="outline" onClick={handleReset}>
                         <RotateCcw className="size-4" />
                         Reset
                       </Button>
@@ -797,7 +796,9 @@ export function SpeechWorkbench() {
                       <span>Show original</span>
                       <Switch
                         checked={showOriginalReference}
-                        onCheckedChange={setShowOriginalReference}
+                        onCheckedChange={(checked) =>
+                          setShowOriginalReference(checked && hasActiveEdit)
+                        }
                         disabled={signalMode !== "analysis" || !hasActiveEdit}
                       />
                     </label>

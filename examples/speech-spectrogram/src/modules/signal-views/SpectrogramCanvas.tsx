@@ -157,11 +157,11 @@ export function SpectrogramCanvas({
   "use no memo";
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [measuredWidth, setMeasuredWidth] = useState(width ?? 0);
+  const [measuredWidth, setMeasuredWidth] = useState(0);
+  const renderWidth = width ?? measuredWidth;
 
   useEffect(() => {
     if (width != null) {
-      setMeasuredWidth(width);
       return;
     }
 
@@ -186,7 +186,7 @@ export function SpectrogramCanvas({
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas || measuredWidth <= 0) {
+    if (!canvas || renderWidth <= 0) {
       return;
     }
 
@@ -196,7 +196,7 @@ export function SpectrogramCanvas({
     }
 
     const dpr = window.devicePixelRatio || 1;
-    canvas.width = Math.max(1, Math.floor(measuredWidth * dpr));
+    canvas.width = Math.max(1, Math.floor(renderWidth * dpr));
     canvas.height = Math.max(1, Math.floor(height * dpr));
     context.setTransform(1, 0, 0, 1, 0, 0);
     context.scale(dpr, dpr);
@@ -206,7 +206,7 @@ export function SpectrogramCanvas({
     const { frames, frequencies, sampleRate, times } = stft;
 
     context.fillStyle = "#05070b";
-    context.fillRect(0, 0, measuredWidth, height);
+    context.fillRect(0, 0, renderWidth, height);
 
     if (frames.length === 0 || frequencies.length === 0) {
       return;
@@ -223,7 +223,7 @@ export function SpectrogramCanvas({
     };
     const plotLeft = margins.left;
     const plotTop = margins.top;
-    const plotWidth = Math.max(1, measuredWidth - margins.left - margins.right);
+    const plotWidth = Math.max(1, renderWidth - margins.left - margins.right);
     const plotHeight = Math.max(1, height - margins.top - margins.bottom);
     const plotRight = plotLeft + plotWidth;
     const plotBottom = plotTop + plotHeight;
@@ -428,7 +428,7 @@ export function SpectrogramCanvas({
       const y = barTop + (1 - (tick - displayFloor) / displayRange) * barHeight;
       context.fillText(formatRelativeDbLabel(tick, displayCeil), barLeft + barWidth + 8, y);
     }
-  }, [formants, height, maxFreqDisplay, measuredWidth, pitchTrack, stft]);
+  }, [formants, height, maxFreqDisplay, pitchTrack, renderWidth, stft]);
 
   return (
     <canvas
