@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import type * as React from "react";
 import {
   Mic,
@@ -17,7 +18,6 @@ import {
   CardTitle,
 } from "../../components/ui/card";
 import { Skeleton } from "../../components/ui/skeleton";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
 import { cn } from "../../lib/utils";
 import { SpectrogramCanvas, WaveformCanvas } from "../signal-views";
 import { useSpeechWorkbench } from "./useSpeechWorkbench";
@@ -101,18 +101,6 @@ function PanelShell({
   );
 }
 
-function AnalysisSkeleton() {
-  return (
-    <div className="space-y-4">
-      <div className="grid gap-4 md:grid-cols-2">
-        <Skeleton className="h-[180px] w-full" />
-        <Skeleton className="h-[180px] w-full" />
-      </div>
-      <Skeleton className="h-[320px] w-full" />
-    </div>
-  );
-}
-
 function EmptyChart({
   label,
   detail,
@@ -175,6 +163,28 @@ function PermissionPrompt() {
   );
 }
 
+const rms = (samples: Float32Array) => {
+  if (samples.length === 0) {
+    return 0;
+  }
+
+  let total = 0;
+  for (let index = 0; index < samples.length; index++) {
+    const value = samples[index] ?? 0;
+    total += value * value;
+  }
+
+  return Math.sqrt(total / samples.length);
+};
+
+const peak = (samples: Float32Array) => {
+  let max = 0;
+  for (let index = 0; index < samples.length; index++) {
+    max = Math.max(max, Math.abs(samples[index] ?? 0));
+  }
+  return max;
+};
+
 export function SpeechWorkbench() {
   const {
     state,
@@ -186,11 +196,12 @@ export function SpeechWorkbench() {
     playOriginal,
     playEdited,
   } = useSpeechWorkbench();
+  const [showOriginalReference, setShowOriginalReference] = useState(false);
 
   const liveAnalysis = state.live?.analysis;
   const ready = state.phase === "ready" && state.recorded && state.analysis;
   const hasRecording = state.recorded !== null;
-  const busy = state.phase === "starting" || state.phase === "analyzing";
+  const starting = state.phase === "starting";
   const waitingForPermission =
     state.phase === "starting" && state.microphonePermission === "requesting";
   const liveEmptyLabel =
@@ -199,17 +210,40 @@ export function SpeechWorkbench() {
     state.phase === "recording"
       ? "Waiting for the first microphone frames to populate the live monitor."
       : "Start a recording to show the live signal and spectrogram.";
-  const analysisEmptyLabel =
-    state.phase === "recording" ? "Recording is in progress" : "No recording";
-  const analysisEmptyDetail =
-    state.phase === "recording"
-      ? "Final waveform and spectrogram appear after you stop recording."
-      : "Record audio to populate the analysis panels.";
   const showPrimaryRecordButton =
     state.phase === "idle" ||
     state.phase === "ready" ||
     state.phase === "starting" ||
     state.phase === "analyzing";
+  const hasActiveEdit = state.selectedEdit.type !== "identity";
+  const selectedPresetLabel =
+    presets.find(
+      (preset) => JSON.stringify(preset.edit) === JSON.stringify(state.selectedEdit),
+    )?.label ?? "Unknown";
+  const showEditedSignal =
+    Boolean(ready) &&
+    hasActiveEdit &&
+    !showOriginalReference &&
+    Boolean(state.edited);
+  const signalSectionTitle =
+    state.phase === "recording" || !hasRecording ? "Live monitoring" : "Analysis";
+  const differenceRms = state.edited ? rms(state.edited.difference) : 0;
+  const differencePeak = state.edited ? peak(state.edited.difference) : 0;
+  const signalMode = state.phase === "analyzing"
+    ? "busy"
+    : state.phase === "recording" && state.live && liveAnalysis
+      ? "live"
+      : ready
+        ? "analysis"
+        : "empty";
+  const valuePanelTitle =
+    signalMode === "analysis" && showEditedSignal ? "Difference values" : "Session values";
+
+  useEffect(() => {
+    if (!hasActiveEdit && showOriginalReference) {
+      setShowOriginalReference(false);
+    }
+  }, [hasActiveEdit, showOriginalReference]);
 
   return (
     <main className="min-h-screen bg-zinc-950 text-zinc-100">
@@ -307,23 +341,25 @@ export function SpeechWorkbench() {
                         Play original
                       </Button>
 
-                      <Button
-                        variant="outline"
-                        onClick={playEdited}
-                        disabled={
-                          !ready ||
-                          !state.edited ||
-                          state.playing !== null ||
-                          state.applyingEdit
-                        }
-                      >
-                        {state.playing === "edited" ? (
-                          <InlineSpinner />
-                        ) : (
-                          <WandSparkles className="size-4" />
-                        )}
-                        Play edited
-                      </Button>
+                      {hasActiveEdit && (
+                        <Button
+                          variant="outline"
+                          onClick={playEdited}
+                          disabled={
+                            !ready ||
+                            !state.edited ||
+                            state.playing !== null ||
+                            state.applyingEdit
+                          }
+                        >
+                          {state.playing === "edited" ? (
+                            <InlineSpinner />
+                          ) : (
+                            <WandSparkles className="size-4" />
+                          )}
+                          Play edited
+                        </Button>
+                      )}
                     </>
                   )}
                 </div>
@@ -339,273 +375,277 @@ export function SpeechWorkbench() {
 
             <Card>
               <CardHeader className="pb-4">
-                <CardTitle>Live monitor</CardTitle>
-                <CardDescription>
-                  The rolling window uses the highest peak seen in this recording session.
-                </CardDescription>
+                <CardTitle>{signalSectionTitle}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-5">
-                {!state.live || !liveAnalysis ? (
-                  <>
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <CanvasShell title="Waveform">
-                        <EmptyChart
-                          label={liveEmptyLabel}
-                          detail={liveEmptyDetail}
-                          height={180}
-                        />
-                      </CanvasShell>
-
-                      <PanelShell title="Session values">
-                        <FixedStatPanel>
-                          <div className="flex h-full items-center justify-center text-center">
-                            <div className="space-y-1">
-                              <p className="text-sm font-medium text-zinc-200">
-                                {liveEmptyLabel}
-                              </p>
-                              <p className="text-sm text-zinc-500">
-                                Session values appear after the live stream starts.
-                              </p>
-                            </div>
-                          </div>
-                        </FixedStatPanel>
-                      </PanelShell>
-                    </div>
-
-                    <CanvasShell title="Spectrogram">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <CanvasShell title="Waveform">
+                    {signalMode === "busy" ? (
+                      <Skeleton className="h-[180px] w-full" />
+                    ) : starting ? (
                       <EmptyChart
                         label={liveEmptyLabel}
-                        detail="The live spectrogram appears while microphone capture is active."
-                        height={320}
-                      />
-                    </CanvasShell>
-                  </>
-                ) : (
-                  <>
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <CanvasShell title="Waveform">
-                        <WaveformCanvas
-                          samples={state.live.frame.samples}
-                          sampleRate={state.live.frame.sampleRate}
-                          label="Live waveform"
-                          color="#00d4aa"
-                          amplitudeReference={state.live.frame.peakAmplitude}
-                          className="w-full"
-                        />
-                      </CanvasShell>
-
-                      <PanelShell title="Session values">
-                        <FixedStatPanel>
-                          <dl className="grid h-full grid-rows-5">
-                            <StatRow
-                              label="Window"
-                              value={`${(state.live.frame.elapsedMs / 1000).toFixed(1)} s`}
-                              className="h-full py-0"
-                            />
-                            <StatRow
-                              label="Input level"
-                              value={`${(state.live.frame.level * 100).toFixed(1)} %`}
-                              className="h-full py-0"
-                            />
-                            <StatRow
-                              label="Session peak"
-                              value={`${(state.live.frame.peakAmplitude * 100).toFixed(1)} %`}
-                              className="h-full py-0"
-                            />
-                            <StatRow
-                              label="Pitch"
-                              value={
-                                liveAnalysis.medianF0
-                                  ? `${liveAnalysis.medianF0.toFixed(1)} Hz`
-                                  : "Unvoiced"
-                              }
-                              className="h-full py-0"
-                            />
-                            <StatRow
-                              label="Formants"
-                              value={
-                                liveAnalysis.formantMedians.length > 0
-                                  ? liveAnalysis.formantMedians
-                                      .map((value) => Math.round(value))
-                                      .join(" / ")
-                                  : "Tracking"
-                              }
-                              className="h-full py-0"
-                            />
-                          </dl>
-                        </FixedStatPanel>
-                      </PanelShell>
-                    </div>
-
-                    <CanvasShell title="Spectrogram">
-                      <SpectrogramCanvas
-                        stft={liveAnalysis.stft}
-                        pitchTrack={liveAnalysis.pitchTrack}
-                        formants={liveAnalysis.formants}
-                        maxFreqDisplay={Math.min(state.live.frame.sampleRate / 2, 8000)}
-                        className="w-full"
-                      />
-                    </CanvasShell>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-4">
-                <CardTitle>Analysis</CardTitle>
-                <CardDescription>
-                  Final waveform, spectrogram, and edit comparison.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {busy ? (
-                  <AnalysisSkeleton />
-                ) : !ready ? (
-                  <div className="space-y-5">
-                    <CanvasShell title="Waveform">
-                      <EmptyChart
-                        label={analysisEmptyLabel}
-                        detail={analysisEmptyDetail}
+                        detail={liveEmptyDetail}
                         height={180}
                       />
-                    </CanvasShell>
-                    <CanvasShell title="Spectrogram">
-                      <EmptyChart
-                        label={analysisEmptyLabel}
-                        detail={analysisEmptyDetail}
-                        height={320}
+                    ) : signalMode === "live" ? (
+                      <WaveformCanvas
+                        samples={state.live!.frame.samples}
+                        sampleRate={state.live!.frame.sampleRate}
+                        label="Live waveform"
+                        color="#00d4aa"
+                        amplitudeReference={state.live!.frame.peakAmplitude}
+                        className="w-full"
                       />
-                    </CanvasShell>
-                  </div>
-                ) : (
-                  <Tabs defaultValue="original" className="w-full">
-                    <TabsList>
-                      <TabsTrigger value="original">Original</TabsTrigger>
-                      <TabsTrigger value="edited">Edited</TabsTrigger>
-                    </TabsList>
+                    ) : signalMode === "analysis" ? (
+                      <WaveformCanvas
+                        samples={
+                          showEditedSignal
+                            ? state.edited!.audio.samples
+                            : state.recorded!.samples
+                        }
+                        sampleRate={
+                          showEditedSignal
+                            ? state.edited!.audio.sampleRate
+                            : state.recorded!.sampleRate
+                        }
+                        label={showEditedSignal ? "Edited waveform" : "Original waveform"}
+                        color={showEditedSignal ? "#ff9d5c" : "#00d4aa"}
+                        className="w-full"
+                      />
+                    ) : (
+                      <EmptyChart
+                        label={liveEmptyLabel}
+                        detail={liveEmptyDetail}
+                        height={180}
+                      />
+                    )}
+                  </CanvasShell>
 
-                    <TabsContent value="original" className="space-y-5">
-                      <div className="grid gap-4 md:grid-cols-2">
-                        <PanelShell title="Waveform values">
-                          <FixedStatPanel>
-                            <dl>
-                              <StatRow
-                                label="Duration"
-                                value={`${(
-                                  state.recorded.samples.length / state.recorded.sampleRate
-                                ).toFixed(2)} s`}
-                              />
-                              <StatRow
-                                label="Frames"
-                                value={String(state.analysis.stft.frames.length)}
-                              />
-                              <StatRow
-                                label="Pitch"
-                                value={
-                                  state.analysis.medianF0
-                                    ? `${state.analysis.medianF0.toFixed(1)} Hz`
-                                    : "Unvoiced"
-                                }
-                              />
-                              <StatRow
-                                label="Formants"
-                                value={
-                                  state.analysis.formantMedians.length > 0
-                                    ? state.analysis.formantMedians
-                                        .map((value) => Math.round(value))
-                                        .join(" / ")
-                                    : "Unavailable"
-                                }
-                              />
-                            </dl>
-                          </FixedStatPanel>
-                        </PanelShell>
-
-                        <CanvasShell title="Waveform">
-                          <WaveformCanvas
-                            samples={state.recorded.samples}
-                            sampleRate={state.recorded.sampleRate}
-                            label="Original waveform"
-                            color="#00d4aa"
-                            className="w-full"
-                          />
-                        </CanvasShell>
-                      </div>
-
-                      <CanvasShell title="Spectrogram">
-                        <SpectrogramCanvas
-                          stft={state.analysis.stft}
-                          pitchTrack={state.analysis.pitchTrack}
-                          formants={state.analysis.formants}
-                          maxFreqDisplay={Math.min(state.recorded.sampleRate / 2, 8000)}
-                          className="w-full"
-                        />
-                      </CanvasShell>
-                    </TabsContent>
-
-                    <TabsContent value="edited" className="space-y-5">
-                      <div className="flex flex-wrap gap-2">
-                        {presets.map((preset) => {
-                          const active =
-                            JSON.stringify(preset.edit) ===
-                            JSON.stringify(state.selectedEdit);
-                          return (
-                            <Button
-                              key={preset.label}
-                              variant={active ? "secondary" : "outline"}
-                              size="sm"
-                              onClick={() => setSelectedEdit(preset.edit)}
-                            >
-                              {preset.label}
-                            </Button>
-                          );
-                        })}
-                      </div>
-
-                      {state.applyingEdit || !state.edited ? (
-                        <div className="space-y-4">
-                          <SpinnerLabel text="Applying spectral edit." />
-                          <AnalysisSkeleton />
+                  <PanelShell title={valuePanelTitle}>
+                    <FixedStatPanel>
+                      {signalMode === "busy" ? (
+                        <div className="space-y-3">
+                          <Skeleton className="h-4 w-24" />
+                          <Skeleton className="h-4 w-36" />
+                          <Skeleton className="h-4 w-28" />
+                          <Skeleton className="h-4 w-32" />
+                          <Skeleton className="h-4 w-40" />
                         </div>
-                      ) : (
-                        <>
-                          <div className="grid gap-4 md:grid-cols-2">
-                            <CanvasShell title="Edited waveform">
-                              <WaveformCanvas
-                                samples={state.edited.audio.samples}
-                                sampleRate={state.edited.audio.sampleRate}
-                                label="Edited waveform"
-                                color="#ff9d5c"
-                                className="w-full"
-                              />
-                            </CanvasShell>
-
-                            <CanvasShell title="Difference">
-                              <WaveformCanvas
-                                samples={state.edited.difference}
-                                sampleRate={state.recorded.sampleRate}
-                                label="Original minus edited"
-                                color="#d4d4d8"
-                                className="w-full"
-                              />
-                            </CanvasShell>
+                      ) : starting ? (
+                        <div className="flex h-full items-center justify-center text-center">
+                          <div className="space-y-1">
+                            <p className="text-sm font-medium text-zinc-200">
+                              {liveEmptyLabel}
+                            </p>
+                            <p className="text-sm text-zinc-500">
+                              Session values appear after recording starts or finishes.
+                            </p>
                           </div>
-
-                          <CanvasShell title="Edited spectrogram">
-                            <SpectrogramCanvas
-                              stft={state.edited.analysis.stft}
-                              pitchTrack={state.edited.analysis.pitchTrack}
-                              formants={state.edited.analysis.formants}
-                              maxFreqDisplay={Math.min(state.recorded.sampleRate / 2, 8000)}
-                              className="w-full"
-                            />
-                          </CanvasShell>
-                        </>
+                        </div>
+                      ) : signalMode === "live" ? (
+                        <dl className="grid h-full grid-rows-5">
+                          <StatRow
+                            label="Window"
+                            value={`${(state.live!.frame.elapsedMs / 1000).toFixed(1)} s`}
+                            className="h-full py-0"
+                          />
+                          <StatRow
+                            label="Input level"
+                            value={`${(state.live!.frame.level * 100).toFixed(1)} %`}
+                            className="h-full py-0"
+                          />
+                          <StatRow
+                            label="Session peak"
+                            value={`${(state.live!.frame.peakAmplitude * 100).toFixed(1)} %`}
+                            className="h-full py-0"
+                          />
+                          <StatRow
+                            label="Pitch"
+                            value={
+                              liveAnalysis!.medianF0
+                                ? `${liveAnalysis!.medianF0.toFixed(1)} Hz`
+                                : "Unvoiced"
+                            }
+                            className="h-full py-0"
+                          />
+                          <StatRow
+                            label="Formants"
+                            value={
+                              liveAnalysis!.formantMedians.length > 0
+                                ? liveAnalysis!.formantMedians
+                                    .map((value) => Math.round(value))
+                                    .join(" / ")
+                                : "Tracking"
+                            }
+                            className="h-full py-0"
+                          />
+                        </dl>
+                      ) : signalMode === "analysis" && showEditedSignal && state.edited ? (
+                        <dl className="grid h-full grid-rows-5">
+                          <StatRow
+                            label="Edit"
+                            value={selectedPresetLabel}
+                            className="h-full py-0"
+                          />
+                          <StatRow
+                            label="RMS delta"
+                            value={`${(differenceRms * 100).toFixed(1)} %`}
+                            className="h-full py-0"
+                          />
+                          <StatRow
+                            label="Peak delta"
+                            value={`${(differencePeak * 100).toFixed(1)} %`}
+                            className="h-full py-0"
+                          />
+                          <StatRow
+                            label="Edited pitch"
+                            value={
+                              state.edited.analysis.medianF0
+                                ? `${state.edited.analysis.medianF0.toFixed(1)} Hz`
+                                : "Unvoiced"
+                            }
+                            className="h-full py-0"
+                          />
+                          <StatRow
+                            label="Edited formants"
+                            value={
+                              state.edited.analysis.formantMedians.length > 0
+                                ? state.edited.analysis.formantMedians
+                                    .map((value) => Math.round(value))
+                                    .join(" / ")
+                                : "Unavailable"
+                            }
+                            className="h-full py-0"
+                          />
+                        </dl>
+                      ) : signalMode === "analysis" ? (
+                        <dl>
+                          <StatRow
+                            label="Duration"
+                            value={`${(
+                              state.recorded!.samples.length / state.recorded!.sampleRate
+                            ).toFixed(2)} s`}
+                          />
+                          <StatRow
+                            label="Frames"
+                            value={String(state.analysis!.stft.frames.length)}
+                          />
+                          <StatRow
+                            label="Pitch"
+                            value={
+                              state.analysis!.medianF0
+                                ? `${state.analysis!.medianF0.toFixed(1)} Hz`
+                                : "Unvoiced"
+                            }
+                          />
+                          <StatRow
+                            label="Formants"
+                            value={
+                              state.analysis!.formantMedians.length > 0
+                                ? state.analysis!.formantMedians
+                                    .map((value) => Math.round(value))
+                                    .join(" / ")
+                                : "Unavailable"
+                            }
+                          />
+                        </dl>
+                      ) : (
+                        <div className="flex h-full items-center justify-center text-center">
+                          <div className="space-y-1">
+                            <p className="text-sm font-medium text-zinc-200">
+                              {liveEmptyLabel}
+                            </p>
+                            <p className="text-sm text-zinc-500">
+                              Session values appear after recording starts or finishes.
+                            </p>
+                          </div>
+                        </div>
                       )}
-                    </TabsContent>
-                  </Tabs>
-                )}
+                    </FixedStatPanel>
+                  </PanelShell>
+                </div>
+
+                <CanvasShell title="Spectrogram">
+                  {signalMode === "busy" ? (
+                    <Skeleton className="h-[320px] w-full" />
+                  ) : starting ? (
+                    <EmptyChart
+                      label={liveEmptyLabel}
+                      detail="The spectrogram appears during recording and stays here after processing."
+                      height={320}
+                    />
+                  ) : signalMode === "live" ? (
+                    <SpectrogramCanvas
+                      stft={liveAnalysis!.stft}
+                      pitchTrack={liveAnalysis!.pitchTrack}
+                      formants={liveAnalysis!.formants}
+                      maxFreqDisplay={Math.min(state.live!.frame.sampleRate / 2, 8000)}
+                      className="w-full"
+                    />
+                  ) : signalMode === "analysis" ? (
+                    <SpectrogramCanvas
+                      stft={
+                        showEditedSignal
+                          ? state.edited!.analysis.stft
+                          : state.analysis!.stft
+                      }
+                      pitchTrack={
+                        showEditedSignal
+                          ? state.edited!.analysis.pitchTrack
+                          : state.analysis!.pitchTrack
+                      }
+                      formants={
+                        showEditedSignal
+                          ? state.edited!.analysis.formants
+                          : state.analysis!.formants
+                      }
+                      maxFreqDisplay={Math.min(state.recorded!.sampleRate / 2, 8000)}
+                      className="w-full"
+                    />
+                  ) : (
+                    <EmptyChart
+                      label={liveEmptyLabel}
+                      detail="The spectrogram appears during recording and stays here after processing."
+                      height={320}
+                    />
+                  )}
+                </CanvasShell>
+
+                <PanelShell title="Edit controls">
+                  <div className="space-y-3 rounded-md border border-zinc-800 bg-zinc-950 p-4">
+                    <div className="flex flex-wrap gap-2">
+                      {presets.map((preset) => {
+                        const active =
+                          JSON.stringify(preset.edit) ===
+                          JSON.stringify(state.selectedEdit);
+                        return (
+                          <Button
+                            key={preset.label}
+                            variant={active ? "secondary" : "outline"}
+                            size="sm"
+                            disabled={signalMode !== "analysis"}
+                            onClick={() => setSelectedEdit(preset.edit)}
+                          >
+                            {preset.label}
+                          </Button>
+                        );
+                      })}
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-3">
+                      <Button
+                        variant={showOriginalReference ? "secondary" : "outline"}
+                        size="sm"
+                        disabled={signalMode !== "analysis" || !hasActiveEdit}
+                        onClick={() => setShowOriginalReference((current) => !current)}
+                      >
+                        {showOriginalReference ? "Showing original" : "Show original"}
+                      </Button>
+                      {state.applyingEdit && <SpinnerLabel text="Applying spectral edit." />}
+                    </div>
+                  </div>
+                </PanelShell>
               </CardContent>
             </Card>
           </div>

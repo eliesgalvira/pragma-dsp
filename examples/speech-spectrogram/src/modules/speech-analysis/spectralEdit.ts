@@ -23,6 +23,9 @@ export const applySpectralEdit = (
   const output = createComplexArray(fftSize);
 
   switch (edit.type) {
+    case "identity":
+      return input;
+
     case "scale": {
       assertNonZero(edit.factor);
       const chain = fft.forward(input).scale(edit.factor);

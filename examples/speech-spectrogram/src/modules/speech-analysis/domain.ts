@@ -37,6 +37,7 @@ export type SignalAnalysis = {
 };
 
 export type SpectralEditKind =
+  | { readonly type: "identity" }
   | { readonly type: "scale"; readonly factor: number }
   | { readonly type: "multiply_by_i" }
   | { readonly type: "conjugate" }
@@ -49,6 +50,7 @@ export type SpectralEditPreset = {
 };
 
 export const SPECTRAL_EDIT_PRESETS: ReadonlyArray<SpectralEditPreset> = [
+  { label: "Original", edit: { type: "identity" } },
   { label: "Scale x4", edit: { type: "scale", factor: 4 } },
   { label: "Scale x0.25", edit: { type: "scale", factor: 0.25 } },
   { label: "Multiply by i", edit: { type: "multiply_by_i" } },
