@@ -1,12 +1,13 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import tailwindcss from '@tailwindcss/vite'
 import path from 'node:path'
 
 const dspRoot = path.resolve(__dirname, '../../src')
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
       'pragma-dsp/xform/fourier-fluent': path.join(dspRoot, 'xform/fourier-fluent.ts'),

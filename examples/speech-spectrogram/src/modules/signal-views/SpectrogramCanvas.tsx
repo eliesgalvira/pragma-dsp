@@ -12,6 +12,7 @@ type SpectrogramCanvasProps = {
   readonly width?: number;
   readonly height?: number;
   readonly maxFreqDisplay?: number;
+  readonly className?: string;
 };
 
 const viridis = (value: number): [number, number, number] => {
@@ -29,6 +30,7 @@ export function SpectrogramCanvas({
   width = 820,
   height = 320,
   maxFreqDisplay,
+  className,
 }: SpectrogramCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -169,5 +171,11 @@ export function SpectrogramCanvas({
     }
   }, [formants, height, maxFreqDisplay, pitchTrack, stft, width]);
 
-  return <canvas ref={canvasRef} style={{ width, height, borderRadius: 16 }} />;
+  return (
+    <canvas
+      ref={canvasRef}
+      className={className}
+      style={{ width, height, borderRadius: 8 }}
+    />
+  );
 }

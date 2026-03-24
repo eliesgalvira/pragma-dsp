@@ -1,97 +1,78 @@
-import type { PropsWithChildren } from "react";
+import type * as React from "react";
+import {
+  LoaderCircle,
+  Mic,
+  RotateCcw,
+  Square,
+  Volume2,
+  WandSparkles,
+} from "lucide-react";
 
+import { Button } from "../../components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../../components/ui/card";
+import { Skeleton } from "../../components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
+import { cn } from "../../lib/utils";
 import { SpectrogramCanvas, WaveformCanvas } from "../signal-views";
 import { useSpeechWorkbench } from "./useSpeechWorkbench";
 
-function Surface({
-  title,
-  eyebrow,
-  children,
-}: PropsWithChildren<{ readonly title: string; readonly eyebrow?: string }>) {
+function SpinnerLabel({ text }: { readonly text: string }) {
   return (
-    <section
-      style={{
-        background: "var(--surface)",
-        border: "1px solid var(--border)",
-        borderRadius: 24,
-        padding: 20,
-        boxShadow: "var(--shadow)",
-        backdropFilter: "blur(18px)",
-      }}
-    >
-      <div style={{ marginBottom: 14 }}>
-        {eyebrow ? (
-          <div
-            style={{
-              color: "var(--accent)",
-              fontSize: 12,
-              letterSpacing: "0.16em",
-              textTransform: "uppercase",
-              marginBottom: 4,
-            }}
-          >
-            {eyebrow}
-          </div>
-        ) : null}
-        <h2 style={{ margin: 0, fontSize: 24 }}>{title}</h2>
-      </div>
-      {children}
-    </section>
-  );
-}
-
-function Metric({ label, value }: { readonly label: string; readonly value: string }) {
-  return (
-    <div
-      style={{
-        padding: 14,
-        borderRadius: 16,
-        background: "rgba(255, 255, 255, 0.04)",
-        border: "1px solid rgba(255, 255, 255, 0.06)",
-      }}
-    >
-      <div style={{ color: "var(--muted)", fontSize: 12, marginBottom: 6 }}>{label}</div>
-      <div style={{ fontSize: 22, fontWeight: 600 }}>{value}</div>
+    <div className="flex items-center gap-2 text-sm text-zinc-400">
+      <LoaderCircle className="size-4 animate-spin" />
+      <span>{text}</span>
     </div>
   );
 }
 
-function ActionButton({
+function StatRow({
   label,
-  onClick,
-  disabled,
-  tone = "primary",
+  value,
 }: {
   readonly label: string;
-  readonly onClick: () => void;
-  readonly disabled?: boolean;
-  readonly tone?: "primary" | "danger" | "secondary";
+  readonly value: string;
 }) {
-  const background =
-    tone === "danger"
-      ? "linear-gradient(135deg, #c44141, #ff6b6b)"
-      : tone === "secondary"
-        ? "rgba(255, 255, 255, 0.08)"
-        : "linear-gradient(135deg, #3fb5ad, #54d4c4)";
-  const color = tone === "secondary" ? "var(--text)" : "#061013";
-
   return (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={onClick}
-      style={{
-        padding: "12px 18px",
-        borderRadius: 999,
-        background,
-        color,
-        fontWeight: 700,
-        cursor: disabled ? "not-allowed" : "pointer",
-        opacity: disabled ? 0.55 : 1,
-      }}
-    >
-      {label}
-    </button>
+    <div className="flex items-center justify-between border-b border-zinc-800 py-2 last:border-b-0">
+      <dt className="text-sm text-zinc-400">{label}</dt>
+      <dd className="text-right text-sm font-medium text-zinc-100">{value}</dd>
+    </div>
+  );
+}
+
+function CanvasShell({
+  title,
+  children,
+}: {
+  readonly title: string;
+  readonly children: React.ReactNode;
+}) {
+  return (
+    <div className="space-y-3">
+      <h3 className="text-sm font-medium text-zinc-200">{title}</h3>
+      <div className="overflow-hidden rounded-md border border-zinc-800 bg-black">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function AnalysisSkeleton() {
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-3 md:grid-cols-2">
+        <Skeleton className="h-24 w-full" />
+        <Skeleton className="h-24 w-full" />
+      </div>
+      <Skeleton className="h-[220px] w-full" />
+      <Skeleton className="h-[300px] w-full" />
+    </div>
   );
 }
 
@@ -109,306 +90,418 @@ export function SpeechWorkbench() {
 
   const liveAnalysis = state.live?.analysis;
   const ready = state.phase === "ready" && state.recorded && state.analysis;
+  const busy = state.phase === "starting" || state.phase === "analyzing";
 
   return (
-    <main
-      style={{
-        width: "min(1180px, calc(100vw - 32px))",
-        margin: "0 auto",
-        padding: "40px 0 56px",
-      }}
-    >
-      <section style={{ marginBottom: 28 }}>
-        <div
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 10,
-            padding: "8px 12px",
-            borderRadius: 999,
-            border: "1px solid var(--border)",
-            background: "rgba(9, 18, 23, 0.55)",
-            marginBottom: 16,
-          }}
-        >
-          <span
-            style={{
-              width: 9,
-              height: 9,
-              borderRadius: "50%",
-              background: state.phase === "recording" ? "var(--danger)" : "var(--accent)",
-              boxShadow:
-                state.phase === "recording"
-                  ? "0 0 18px rgba(255, 107, 107, 0.8)"
-                  : "0 0 18px rgba(84, 212, 196, 0.6)",
-            }}
-          />
-          <span style={{ color: "var(--muted)", fontSize: 13 }}>
-            {state.phase === "recording"
-              ? "Live microphone capture"
-              : state.phase === "analyzing"
-                ? "Rendering final analysis"
-                : "Effect beta orchestration"}
-          </span>
-        </div>
+    <main className="min-h-screen bg-zinc-950 text-zinc-100">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-6">
+        <header className="border-b border-zinc-800 pb-4">
+          <h1 className="text-2xl font-semibold tracking-tight text-zinc-100">
+            Speech spectrogram
+          </h1>
+          <p className="mt-1 text-sm text-zinc-400">
+            Record speech, inspect the live window, and compare spectral edits.
+          </p>
+        </header>
 
-        <h1
-          style={{
-            fontSize: "clamp(2.8rem, 5vw, 5.2rem)",
-            lineHeight: 0.95,
-            letterSpacing: "-0.05em",
-            margin: "0 0 12px",
-            maxWidth: 900,
-          }}
-        >
-          Speech spectrogram workbench
-        </h1>
+        <section className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="space-y-6">
+            <Card>
+              <CardHeader className="pb-4">
+                <CardTitle>Session</CardTitle>
+                <CardDescription>
+                  Start a recording to inspect the rolling window and final analysis.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex flex-wrap items-center gap-3">
+                  {(state.phase === "idle" || state.phase === "ready") && (
+                    <Button onClick={startRecording} disabled={busy}>
+                      {busy ? (
+                        <LoaderCircle className="size-4 animate-spin" />
+                      ) : (
+                        <Mic className="size-4" />
+                      )}
+                      Start recording
+                    </Button>
+                  )}
 
-        <p style={{ margin: 0, color: "var(--muted)", maxWidth: 760, fontSize: 18 }}>
-          The UI is a thin shell now. Browser audio, DSP analysis, and playback live behind
-          explicit Effect services, while the workbench module owns the orchestration boundary.
-        </p>
-      </section>
+                  {state.phase === "recording" && (
+                    <Button variant="destructive" onClick={stopRecording}>
+                      <Square className="size-4" />
+                      Stop recording
+                    </Button>
+                  )}
 
-      <Surface title="Session Controls" eyebrow="Capture">
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
-          {state.phase === "idle" || state.phase === "ready" ? (
-            <ActionButton label="Start Recording" onClick={startRecording} />
-          ) : null}
-
-          {state.phase === "recording" ? (
-            <ActionButton label="Stop Recording" tone="danger" onClick={stopRecording} />
-          ) : null}
-
-          {state.phase !== "idle" ? (
-            <ActionButton label="Reset" tone="secondary" onClick={reset} />
-          ) : null}
-
-          {ready ? (
-            <>
-              <ActionButton
-                label={state.playing === "original" ? "Playing Original" : "Play Original"}
-                onClick={playOriginal}
-                disabled={state.playing !== null}
-                tone="secondary"
-              />
-              <ActionButton
-                label={state.playing === "edited" ? "Playing Edited" : "Play Edited"}
-                onClick={playEdited}
-                disabled={state.playing !== null || !state.edited}
-                tone="secondary"
-              />
-            </>
-          ) : null}
-        </div>
-
-        <div style={{ marginTop: 16, color: "var(--muted)", fontSize: 14 }}>
-          {state.phase === "recording"
-            ? "Live previews update continuously while MediaRecorder captures the final take."
-            : state.phase === "analyzing"
-              ? "Finalizing the recording, decoding it, and recomputing the full STFT."
-              : "Record a phrase to inspect waveform, pitch, formants, and spectral edits."}
-        </div>
-
-        {state.error ? (
-          <div
-            style={{
-              marginTop: 16,
-              borderRadius: 16,
-              padding: "12px 14px",
-              background: "rgba(196, 65, 65, 0.12)",
-              border: "1px solid rgba(255, 107, 107, 0.3)",
-              color: "#ffd8d8",
-            }}
-          >
-            {state.error}
-          </div>
-        ) : null}
-      </Surface>
-
-      {state.live && liveAnalysis ? (
-        <div style={{ display: "grid", gap: 20, gridTemplateColumns: "1fr", marginTop: 24 }}>
-          <Surface title="Live Monitor" eyebrow="Realtime">
-            <div
-              style={{
-                display: "grid",
-                gap: 14,
-                gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
-                marginBottom: 18,
-              }}
-            >
-              <Metric label="Window" value={`${(state.live.frame.elapsedMs / 1000).toFixed(1)}s`} />
-              <Metric label="Input Level" value={`${(state.live.frame.level * 100).toFixed(1)}%`} />
-              <Metric
-                label="Pitch"
-                value={liveAnalysis.medianF0 ? `${liveAnalysis.medianF0.toFixed(1)} Hz` : "Unvoiced"}
-              />
-              <Metric
-                label="Formants"
-                value={
-                  liveAnalysis.formantMedians.length > 0
-                    ? liveAnalysis.formantMedians.map((value) => Math.round(value)).join(" / ")
-                    : "Tracking"
-                }
-              />
-            </div>
-
-            <div style={{ display: "grid", gap: 18 }}>
-              <div>
-                <div style={{ marginBottom: 10, color: "var(--muted)", fontSize: 13 }}>
-                  Rolling time-domain window
-                </div>
-                <WaveformCanvas
-                  samples={state.live.frame.samples}
-                  sampleRate={state.live.frame.sampleRate}
-                  label="Live waveform"
-                  color="#54d4c4"
-                  amplitudeReference={state.live.frame.peakAmplitude}
-                />
-              </div>
-
-              <div>
-                <div style={{ marginBottom: 10, color: "var(--muted)", fontSize: 13 }}>
-                  Streaming STFT, pitch track, and formant hints
-                </div>
-                <SpectrogramCanvas
-                  stft={liveAnalysis.stft}
-                  pitchTrack={liveAnalysis.pitchTrack}
-                  formants={liveAnalysis.formants}
-                  maxFreqDisplay={Math.min(state.live.frame.sampleRate / 2, 8000)}
-                />
-              </div>
-            </div>
-          </Surface>
-        </div>
-      ) : null}
-
-      {ready ? (
-        <div style={{ display: "grid", gap: 24, marginTop: 24 }}>
-          <Surface title="Recording Analysis" eyebrow="Overview">
-            <div
-              style={{
-                display: "grid",
-                gap: 14,
-                gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
-                marginBottom: 18,
-              }}
-            >
-              <Metric
-                label="Pitch"
-                value={state.analysis.medianF0 ? `${state.analysis.medianF0.toFixed(1)} Hz` : "Unvoiced"}
-              />
-              <Metric label="Frames" value={String(state.analysis.stft.frames.length)} />
-              <Metric
-                label="Duration"
-                value={`${(state.recorded.samples.length / state.recorded.sampleRate).toFixed(2)}s`}
-              />
-              <Metric
-                label="Formants"
-                value={
-                  state.analysis.formantMedians.length > 0
-                    ? state.analysis.formantMedians.map((value) => Math.round(value)).join(" / ")
-                    : "Unavailable"
-                }
-              />
-            </div>
-
-            <div style={{ display: "grid", gap: 18 }}>
-              <div>
-                <div style={{ marginBottom: 10, color: "var(--muted)", fontSize: 13 }}>
-                  Original waveform
-                </div>
-                <WaveformCanvas
-                  samples={state.recorded.samples}
-                  sampleRate={state.recorded.sampleRate}
-                  label="Original signal"
-                  color="#54d4c4"
-                />
-              </div>
-
-              <div>
-                <div style={{ marginBottom: 10, color: "var(--muted)", fontSize: 13 }}>
-                  Original STFT with pitch and formants
-                </div>
-                <SpectrogramCanvas
-                  stft={state.analysis.stft}
-                  pitchTrack={state.analysis.pitchTrack}
-                  formants={state.analysis.formants}
-                  maxFreqDisplay={Math.min(state.recorded.sampleRate / 2, 8000)}
-                />
-              </div>
-            </div>
-          </Surface>
-
-          <Surface title="Spectral Edit Module" eyebrow="Experiment">
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 18 }}>
-              {presets.map((preset) => {
-                const active = JSON.stringify(preset.edit) === JSON.stringify(state.selectedEdit);
-                return (
-                  <button
-                    key={preset.label}
-                    type="button"
-                    onClick={() => setSelectedEdit(preset.edit)}
-                    style={{
-                      padding: "10px 14px",
-                      borderRadius: 999,
-                      border: active ? "1px solid rgba(84, 212, 196, 0.8)" : "1px solid rgba(255, 255, 255, 0.08)",
-                      background: active ? "rgba(84, 212, 196, 0.14)" : "rgba(255, 255, 255, 0.04)",
-                      color: "var(--text)",
-                      cursor: "pointer",
-                    }}
+                  <Button
+                    variant="outline"
+                    onClick={reset}
+                    disabled={state.phase === "idle" && !state.error}
                   >
-                    {preset.label}
-                  </button>
-                );
-              })}
-            </div>
+                    <RotateCcw className="size-4" />
+                    Reset
+                  </Button>
 
-            {state.edited ? (
-              <div style={{ display: "grid", gap: 18 }}>
-                <div style={{ display: "grid", gap: 18, gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))" }}>
-                  <div>
-                    <div style={{ marginBottom: 10, color: "var(--muted)", fontSize: 13 }}>
-                      Edited waveform
-                    </div>
-                    <WaveformCanvas
-                      samples={state.edited.audio.samples}
-                      sampleRate={state.edited.audio.sampleRate}
-                      label="Edited signal"
-                      color="#ff9d5c"
-                      width={540}
-                    />
-                  </div>
-                  <div>
-                    <div style={{ marginBottom: 10, color: "var(--muted)", fontSize: 13 }}>
-                      Difference signal
-                    </div>
-                    <WaveformCanvas
-                      samples={state.edited.difference}
-                      sampleRate={state.recorded.sampleRate}
-                      label="Original - edited"
-                      color="#7aa2ff"
-                      width={540}
-                    />
-                  </div>
+                  <Button
+                    variant="outline"
+                    onClick={playOriginal}
+                    disabled={!ready || state.playing !== null}
+                  >
+                    {state.playing === "original" ? (
+                      <LoaderCircle className="size-4 animate-spin" />
+                    ) : (
+                      <Volume2 className="size-4" />
+                    )}
+                    Play original
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    onClick={playEdited}
+                    disabled={!ready || !state.edited || state.playing !== null || state.applyingEdit}
+                  >
+                    {state.playing === "edited" ? (
+                      <LoaderCircle className="size-4 animate-spin" />
+                    ) : (
+                      <WandSparkles className="size-4" />
+                    )}
+                    Play edited
+                  </Button>
                 </div>
 
-                <div>
-                  <div style={{ marginBottom: 10, color: "var(--muted)", fontSize: 13 }}>
-                    Edited STFT
+                <div className="text-sm text-zinc-400">
+                  {state.phase === "starting" && "Requesting microphone access."}
+                  {state.phase === "recording" && "Recording in progress."}
+                  {state.phase === "analyzing" &&
+                    "Decoding audio and computing the full analysis."}
+                  {state.phase === "ready" && "Recording ready."}
+                  {state.phase === "idle" && "No active recording."}
+                </div>
+
+                {state.error && (
+                  <div className="rounded-md border border-rose-900 bg-rose-950/40 px-3 py-2 text-sm text-rose-200">
+                    {state.error}
                   </div>
-                  <SpectrogramCanvas
-                    stft={state.edited.analysis.stft}
-                    pitchTrack={state.edited.analysis.pitchTrack}
-                    formants={state.edited.analysis.formants}
-                    maxFreqDisplay={Math.min(state.recorded.sampleRate / 2, 8000)}
+                )}
+              </CardContent>
+            </Card>
+
+            {(state.phase === "recording" || state.live) && (
+              <Card>
+                <CardHeader className="pb-4">
+                  <CardTitle>Live monitor</CardTitle>
+                  <CardDescription>
+                    The rolling window uses the highest peak seen in this recording session.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-5">
+                  {!state.live || !liveAnalysis ? (
+                    <AnalysisSkeleton />
+                  ) : (
+                    <>
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <CanvasShell title="Waveform">
+                          <WaveformCanvas
+                            samples={state.live.frame.samples}
+                            sampleRate={state.live.frame.sampleRate}
+                            label="Live waveform"
+                            color="#00d4aa"
+                            amplitudeReference={state.live.frame.peakAmplitude}
+                            className="w-full"
+                          />
+                        </CanvasShell>
+
+                        <div className="rounded-md border border-zinc-800 bg-zinc-950 p-4">
+                          <dl>
+                            <StatRow
+                              label="Window"
+                              value={`${(state.live.frame.elapsedMs / 1000).toFixed(1)} s`}
+                            />
+                            <StatRow
+                              label="Input level"
+                              value={`${(state.live.frame.level * 100).toFixed(1)} %`}
+                            />
+                            <StatRow
+                              label="Session peak"
+                              value={`${(state.live.frame.peakAmplitude * 100).toFixed(1)} %`}
+                            />
+                            <StatRow
+                              label="Pitch"
+                              value={
+                                liveAnalysis.medianF0
+                                  ? `${liveAnalysis.medianF0.toFixed(1)} Hz`
+                                  : "Unvoiced"
+                              }
+                            />
+                            <StatRow
+                              label="Formants"
+                              value={
+                                liveAnalysis.formantMedians.length > 0
+                                  ? liveAnalysis.formantMedians
+                                      .map((value) => Math.round(value))
+                                      .join(" / ")
+                                  : "Tracking"
+                              }
+                            />
+                          </dl>
+                        </div>
+                      </div>
+
+                      <CanvasShell title="Spectrogram">
+                        <SpectrogramCanvas
+                          stft={liveAnalysis.stft}
+                          pitchTrack={liveAnalysis.pitchTrack}
+                          formants={liveAnalysis.formants}
+                          maxFreqDisplay={Math.min(state.live.frame.sampleRate / 2, 8000)}
+                          className="w-full"
+                        />
+                      </CanvasShell>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            <Card>
+              <CardHeader className="pb-4">
+                <CardTitle>Analysis</CardTitle>
+                <CardDescription>
+                  Final waveform, spectrogram, and edit comparison.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {busy ? (
+                  <AnalysisSkeleton />
+                ) : !ready ? (
+                  <div className="rounded-md border border-dashed border-zinc-800 px-4 py-10 text-sm text-zinc-400">
+                    Record audio to populate the analysis panels.
+                  </div>
+                ) : (
+                  <Tabs defaultValue="original" className="w-full">
+                    <TabsList>
+                      <TabsTrigger value="original">Original</TabsTrigger>
+                      <TabsTrigger value="edited">Edited</TabsTrigger>
+                    </TabsList>
+
+                    <TabsContent value="original" className="space-y-5">
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <div className="rounded-md border border-zinc-800 bg-zinc-950 p-4">
+                          <dl>
+                            <StatRow
+                              label="Duration"
+                              value={`${(
+                                state.recorded.samples.length / state.recorded.sampleRate
+                              ).toFixed(2)} s`}
+                            />
+                            <StatRow
+                              label="Frames"
+                              value={String(state.analysis.stft.frames.length)}
+                            />
+                            <StatRow
+                              label="Pitch"
+                              value={
+                                state.analysis.medianF0
+                                  ? `${state.analysis.medianF0.toFixed(1)} Hz`
+                                  : "Unvoiced"
+                              }
+                            />
+                            <StatRow
+                              label="Formants"
+                              value={
+                                state.analysis.formantMedians.length > 0
+                                  ? state.analysis.formantMedians
+                                      .map((value) => Math.round(value))
+                                      .join(" / ")
+                                  : "Unavailable"
+                              }
+                            />
+                          </dl>
+                        </div>
+
+                        <CanvasShell title="Waveform">
+                          <WaveformCanvas
+                            samples={state.recorded.samples}
+                            sampleRate={state.recorded.sampleRate}
+                            label="Original waveform"
+                            color="#00d4aa"
+                            className="w-full"
+                          />
+                        </CanvasShell>
+                      </div>
+
+                      <CanvasShell title="Spectrogram">
+                        <SpectrogramCanvas
+                          stft={state.analysis.stft}
+                          pitchTrack={state.analysis.pitchTrack}
+                          formants={state.analysis.formants}
+                          maxFreqDisplay={Math.min(state.recorded.sampleRate / 2, 8000)}
+                          className="w-full"
+                        />
+                      </CanvasShell>
+                    </TabsContent>
+
+                    <TabsContent value="edited" className="space-y-5">
+                      <div className="flex flex-wrap gap-2">
+                        {presets.map((preset) => {
+                          const active =
+                            JSON.stringify(preset.edit) === JSON.stringify(state.selectedEdit);
+                          return (
+                            <Button
+                              key={preset.label}
+                              variant={active ? "secondary" : "outline"}
+                              size="sm"
+                              onClick={() => setSelectedEdit(preset.edit)}
+                            >
+                              {preset.label}
+                            </Button>
+                          );
+                        })}
+                      </div>
+
+                      {state.applyingEdit || !state.edited ? (
+                        <div className="space-y-4">
+                          <SpinnerLabel text="Applying spectral edit." />
+                          <AnalysisSkeleton />
+                        </div>
+                      ) : (
+                        <>
+                          <div className="grid gap-4 md:grid-cols-2">
+                            <CanvasShell title="Edited waveform">
+                              <WaveformCanvas
+                                samples={state.edited.audio.samples}
+                                sampleRate={state.edited.audio.sampleRate}
+                                label="Edited waveform"
+                                color="#ff9d5c"
+                                className="w-full"
+                              />
+                            </CanvasShell>
+
+                            <CanvasShell title="Difference">
+                              <WaveformCanvas
+                                samples={state.edited.difference}
+                                sampleRate={state.recorded.sampleRate}
+                                label="Original minus edited"
+                                color="#d4d4d8"
+                                className="w-full"
+                              />
+                            </CanvasShell>
+                          </div>
+
+                          <CanvasShell title="Edited spectrogram">
+                            <SpectrogramCanvas
+                              stft={state.edited.analysis.stft}
+                              pitchTrack={state.edited.analysis.pitchTrack}
+                              formants={state.edited.analysis.formants}
+                              maxFreqDisplay={Math.min(state.recorded.sampleRate / 2, 8000)}
+                              className="w-full"
+                            />
+                          </CanvasShell>
+                        </>
+                      )}
+                    </TabsContent>
+                  </Tabs>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          <aside className="space-y-6">
+            <Card>
+              <CardHeader className="pb-4">
+                <CardTitle>Status</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <dl>
+                  <StatRow label="Phase" value={state.phase} />
+                  <StatRow label="Playback" value={state.playing ?? "idle"} />
+                  <StatRow label="Edit" value={state.applyingEdit ? "updating" : "ready"} />
+                </dl>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-4">
+                <CardTitle>Current values</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {!ready ? (
+                  <div className="space-y-3">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-4 w-36" />
+                    <Skeleton className="h-4 w-28" />
+                  </div>
+                ) : (
+                  <dl>
+                    <StatRow
+                      label="Pitch"
+                      value={
+                        state.analysis.medianF0
+                          ? `${state.analysis.medianF0.toFixed(1)} Hz`
+                          : "Unvoiced"
+                      }
+                    />
+                    <StatRow
+                      label="Formants"
+                      value={
+                        state.analysis.formantMedians.length > 0
+                          ? state.analysis.formantMedians
+                              .map((value) => Math.round(value))
+                              .join(" / ")
+                          : "Unavailable"
+                      }
+                    />
+                    <StatRow
+                      label="Selected edit"
+                      value={
+                        presets.find(
+                          (preset) =>
+                            JSON.stringify(preset.edit) ===
+                            JSON.stringify(state.selectedEdit),
+                        )?.label ?? "Unknown"
+                      }
+                    />
+                  </dl>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-4">
+                <CardTitle>Processing</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm text-zinc-400">
+                <div className="flex items-center gap-2">
+                  <span
+                    className={cn(
+                      "size-2 rounded-full bg-zinc-700",
+                      state.phase === "recording" && "bg-emerald-500",
+                    )}
                   />
+                  Live monitor
                 </div>
-              </div>
-            ) : null}
-          </Surface>
-        </div>
-      ) : null}
+                <div className="flex items-center gap-2">
+                  <span
+                    className={cn(
+                      "size-2 rounded-full bg-zinc-700",
+                      state.phase === "analyzing" && "bg-amber-500",
+                    )}
+                  />
+                  Full analysis
+                </div>
+                <div className="flex items-center gap-2">
+                  <span
+                    className={cn(
+                      "size-2 rounded-full bg-zinc-700",
+                      state.applyingEdit && "bg-amber-500",
+                    )}
+                  />
+                  Spectral edit
+                </div>
+              </CardContent>
+            </Card>
+          </aside>
+        </section>
+      </div>
     </main>
   );
 }

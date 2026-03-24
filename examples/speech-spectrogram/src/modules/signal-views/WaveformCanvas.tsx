@@ -8,6 +8,7 @@ type WaveformCanvasProps = {
   readonly height?: number;
   readonly color?: string;
   readonly amplitudeReference?: number;
+  readonly className?: string;
 };
 
 export function WaveformCanvas({
@@ -18,6 +19,7 @@ export function WaveformCanvas({
   height = 180,
   color = "#54d4c4",
   amplitudeReference,
+  className,
 }: WaveformCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -109,5 +111,11 @@ export function WaveformCanvas({
     }
   }, [amplitudeReference, color, height, label, sampleRate, samples, width]);
 
-  return <canvas ref={canvasRef} style={{ width, height, borderRadius: 16 }} />;
+  return (
+    <canvas
+      ref={canvasRef}
+      className={className}
+      style={{ width, height, borderRadius: 8 }}
+    />
+  );
 }

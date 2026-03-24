@@ -42,6 +42,15 @@ export function useSpeechWorkbench() {
   });
 
   const applyEdit = useEffectEvent((audio: AudioSamples, edit: SpectralEditKind) => {
+    startTransition(() => {
+      setState((current) => {
+        if (current.recorded !== audio) {
+          return current;
+        }
+        return { ...current, applyingEdit: true };
+      });
+    });
+
     void runtime
       .runPromise(
         Effect.gen(function* () {
@@ -55,7 +64,7 @@ export function useSpeechWorkbench() {
             if (current.recorded !== audio) {
               return current;
             }
-            return { ...current, edited };
+            return { ...current, edited, applyingEdit: false };
           });
         });
       })
@@ -101,6 +110,7 @@ export function useSpeechWorkbench() {
         phase: "starting",
         error: null,
         playing: null,
+        applyingEdit: false,
         live: null,
         recorded: null,
         analysis: null,
@@ -171,6 +181,7 @@ export function useSpeechWorkbench() {
           setState((current) => ({
             ...current,
             phase: "ready",
+            applyingEdit: false,
             live: null,
             recorded: audio,
             analysis,
