@@ -44,6 +44,11 @@ Key options:
 - output: magnitude, power, complex
 - scaling modes appropriate for audio visualization
 
+Status:
+- `stft()` shipped
+- `spectrogram()` shipped as a convenience rung over `stft()`
+- higher-level streaming STFT remains future work for the optional Effect ladder
+
 ### B) Sliding DFT
 Why: real-time frequency tracking with incremental updates; useful in monitoring and interactive systems.
 
@@ -112,6 +117,21 @@ Proposed:
   - resampling to uniform grid
   - detrending, normalization, smoothing
 This supports domains like trading and sensor analysis without coupling to any platform.
+
+## Shipped middle rungs
+
+These are the library APIs that now sit between the beginner one-liners and the expert raw kernels:
+
+- `pragma-dsp/xform/stft`
+  - `stft(signal, opts)`
+  - `spectrogram(signalOrStft, opts)`
+- `pragma-dsp/analysis`
+  - `detectPitch(samples, sampleRate, opts)`
+  - `detectFormants(magnitudes, frequencies, opts)`
+  - `analyzeSpeech(samples, opts)`
+  - `magnitudeToDb()`, `spectralEnvelope()`, `movingAverage()`
+
+These belong outside the root entrypoint because they are common power-rung workflows, not beginner defaults.
 
 ## Effect integration growth
 

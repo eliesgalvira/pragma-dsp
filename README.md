@@ -56,7 +56,34 @@ const result = stft(samples, {
 console.log(result.frames.length, result.frequencies.length);
 ```
 
-### 4) Expert core reuse (manual buffers)
+### 4) Spectrogram rung
+```ts
+import { spectrogram } from "pragma-dsp/xform/stft";
+
+const result = spectrogram(samples, {
+  sampleRate: 48_000,
+  fftSize: 1024,
+  hopSize: 256,
+  floorDb: -90
+});
+
+console.log(result.dbFrames.length, result.stft.times.length);
+```
+
+### 5) Speech-analysis rung
+```ts
+import { analyzeSpeech } from "pragma-dsp/analysis";
+
+const analysis = analyzeSpeech(samples, {
+  sampleRate: 16_000,
+  fftSize: 1024,
+  hopSize: 256,
+});
+
+console.log(analysis.medianF0, analysis.formantMedians);
+```
+
+### 6) Expert core reuse (manual buffers)
 ```ts
 import { Radix2Fft, createComplexArray } from "pragma-dsp/core";
 
@@ -68,7 +95,7 @@ fft.forward(input, out);
 // Reuse `out` across frames to avoid allocations.
 ```
 
-### 5) Effect integration (optional)
+### 7) Effect integration (optional)
 ```ts
 import { Stream } from "effect";
 import { FourierLive, spectrumStream } from "pragma-dsp/effect";

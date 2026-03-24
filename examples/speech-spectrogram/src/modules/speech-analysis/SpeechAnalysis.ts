@@ -1,24 +1,9 @@
 import { Effect, Layer, ServiceMap } from "effect";
-import { stft } from "pragma-dsp/xform/stft";
+import { analyzeSpeech } from "pragma-dsp/analysis";
+import { FluentFFT } from "pragma-dsp/xform/fourier-fluent";
 
 import type { AudioSamples } from "../audio";
-import type {
-  AnalysisConfig,
-  EditedSignal,
-  SignalAnalysis,
-  SpectralEditKind,
-} from "./domain";
-import { applySpectralEdit } from "./spectralEdit";
-import { detectFormants, detectPitch } from "./pitch";
-
-const median = (values: ReadonlyArray<number>) => {
-  if (values.length === 0) {
-    return null;
-  }
-
-  const sorted = [...values].sort((left, right) => left - right);
-  return sorted[Math.floor(sorted.length / 2)] ?? null;
-};
+import type { AnalysisConfig, EditedSignal, SignalAnalysis, SpectralEditKind } from "./domain";
 
 const ensureAnalysisWindow = (samples: Float32Array, fftSize: number) => {
   if (samples.length >= fftSize) {
@@ -30,50 +15,15 @@ const ensureAnalysisWindow = (samples: Float32Array, fftSize: number) => {
   return padded;
 };
 
-const createFrameSlices = (samples: Float32Array, fftSize: number, hopSize: number) => {
-  if (samples.length <= fftSize) {
-    return [ensureAnalysisWindow(samples, fftSize)];
-  }
-
-  const frames: Array<Float32Array> = [];
-  for (let start = 0; start + fftSize <= samples.length; start += hopSize) {
-    frames.push(samples.slice(start, start + fftSize));
-  }
-  return frames;
-};
-
 const analyzeInternal = (audio: AudioSamples, config: AnalysisConfig): SignalAnalysis => {
   const normalizedSamples = ensureAnalysisWindow(audio.samples, config.fftSize);
-  const stftResult = stft(normalizedSamples, {
+  const result = analyzeSpeech(normalizedSamples, {
+    sampleRate: audio.sampleRate,
     fftSize: config.fftSize,
     hopSize: config.hopSize,
-    sampleRate: audio.sampleRate,
     window: "hann",
-    complexSides: "one",
   });
-
-  const frameSlices = createFrameSlices(normalizedSamples, config.fftSize, config.hopSize);
-  const pitchTrack = frameSlices.map((frame) => detectPitch(frame, audio.sampleRate).f0);
-  const formants = stftResult.frames.map((frame) =>
-    detectFormants(frame.magnitudes, stftResult.frequencies),
-  );
-
-  const medianF0 = median(pitchTrack.filter((pitch): pitch is number => pitch != null && pitch > 0));
-  const formantMedians = Array.from({ length: 4 }, (_, formantIndex) =>
-    median(
-      formants
-        .map((frame) => frame.formants[formantIndex])
-        .filter((frequency): frequency is number => frequency != null && frequency > 0),
-    ),
-  ).filter((frequency): frequency is number => frequency != null);
-
-  return {
-    stft: stftResult,
-    pitchTrack,
-    formants,
-    medianF0,
-    formantMedians,
-  };
+  return result;
 };
 
 const trimEditedSignal = (edited: Float64Array, originalLength: number, edit: SpectralEditKind) => {
@@ -94,6 +44,30 @@ const difference = (left: Float32Array, right: Float32Array) => {
     output[index] = (left[index] ?? 0) - (right[index] ?? 0);
   }
   return output;
+};
+
+const nextPowerOfTwo = (value: number) => {
+  let power = 1;
+  while (power < value) {
+    power <<= 1;
+  }
+  return power;
+};
+
+const applySpectralEdit = (samples: Float32Array, edit: SpectralEditKind) => {
+  if (edit.type === "identity") {
+    return Float64Array.from(samples);
+  }
+
+  const fftSize = nextPowerOfTwo(samples.length);
+  const fft = new FluentFFT(fftSize);
+  const input = new Float64Array(fftSize);
+  input.set(samples);
+  const chain = fft.forward(input).mulScalar(edit.real, edit.imaginary);
+  if (edit.conjugate) {
+    chain.conj();
+  }
+  return chain.inverse().real;
 };
 
 export class SpeechAnalysis extends ServiceMap.Service<
@@ -117,7 +91,11 @@ export class SpeechAnalysis extends ServiceMap.Service<
     applyEdit: Effect.fn("SpeechAnalysis.applyEdit")(
       (audio: AudioSamples, edit: SpectralEditKind, config: AnalysisConfig) =>
         Effect.sync(() => {
-          const edited = trimEditedSignal(applySpectralEdit(audio.samples, edit), audio.samples.length, edit);
+          const edited = trimEditedSignal(
+            applySpectralEdit(audio.samples, edit),
+            audio.samples.length,
+            edit,
+          );
           const editedAudio: AudioSamples = { samples: edited, sampleRate: audio.sampleRate };
           return {
             audio: editedAudio,

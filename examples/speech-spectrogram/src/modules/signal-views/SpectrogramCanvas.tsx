@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-import { magnitudeToDb } from "pragma-dsp/analysis";
-import type { StftResult } from "pragma-dsp/xform/stft";
+import { spectrogram, type StftResult } from "pragma-dsp/xform/stft";
 
 import type { FormantResult } from "../speech-analysis";
 
@@ -230,9 +229,7 @@ export function SpectrogramCanvas({
     const plotBottom = plotTop + plotHeight;
     const lastTime = times[times.length - 1] ?? 0;
 
-    const dbFrames = frames.map((frame) =>
-      magnitudeToDb(frame.magnitudes, { floorDb: -110 }),
-    );
+    const dbFrames = spectrogram(stft, { floorDb: -110 }).dbFrames;
     const displaySamples = sampleDisplayValues(
       dbFrames,
       displayBins,
