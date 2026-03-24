@@ -225,7 +225,7 @@ export function SpeechWorkbench() {
           </p>
         </header>
 
-        <section className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <section className="space-y-6">
           <div className="space-y-6">
             <Card>
               <CardHeader className="pb-4">
@@ -487,38 +487,40 @@ export function SpeechWorkbench() {
 
                     <TabsContent value="original" className="space-y-5">
                       <div className="grid gap-4 md:grid-cols-2">
-                        <FixedStatPanel>
-                          <dl>
-                            <StatRow
-                              label="Duration"
-                              value={`${(
-                                state.recorded.samples.length / state.recorded.sampleRate
-                              ).toFixed(2)} s`}
-                            />
-                            <StatRow
-                              label="Frames"
-                              value={String(state.analysis.stft.frames.length)}
-                            />
-                            <StatRow
-                              label="Pitch"
-                              value={
-                                state.analysis.medianF0
-                                  ? `${state.analysis.medianF0.toFixed(1)} Hz`
-                                  : "Unvoiced"
-                              }
-                            />
-                            <StatRow
-                              label="Formants"
-                              value={
-                                state.analysis.formantMedians.length > 0
-                                  ? state.analysis.formantMedians
-                                      .map((value) => Math.round(value))
-                                      .join(" / ")
-                                  : "Unavailable"
-                              }
-                            />
-                          </dl>
-                        </FixedStatPanel>
+                        <PanelShell title="Waveform values">
+                          <FixedStatPanel>
+                            <dl>
+                              <StatRow
+                                label="Duration"
+                                value={`${(
+                                  state.recorded.samples.length / state.recorded.sampleRate
+                                ).toFixed(2)} s`}
+                              />
+                              <StatRow
+                                label="Frames"
+                                value={String(state.analysis.stft.frames.length)}
+                              />
+                              <StatRow
+                                label="Pitch"
+                                value={
+                                  state.analysis.medianF0
+                                    ? `${state.analysis.medianF0.toFixed(1)} Hz`
+                                    : "Unvoiced"
+                                }
+                              />
+                              <StatRow
+                                label="Formants"
+                                value={
+                                  state.analysis.formantMedians.length > 0
+                                    ? state.analysis.formantMedians
+                                        .map((value) => Math.round(value))
+                                        .join(" / ")
+                                    : "Unavailable"
+                                }
+                              />
+                            </dl>
+                          </FixedStatPanel>
+                        </PanelShell>
 
                         <CanvasShell title="Waveform">
                           <WaveformCanvas
@@ -607,75 +609,6 @@ export function SpeechWorkbench() {
               </CardContent>
             </Card>
           </div>
-
-          <aside className="space-y-6">
-            <Card>
-              <CardHeader className="pb-4">
-                <CardTitle>Status</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <dl>
-                  <StatRow label="Phase" value={state.phase} />
-                  <StatRow label="Playback" value={state.playing ?? "idle"} />
-                  <StatRow label="Edit" value={state.applyingEdit ? "updating" : "ready"} />
-                </dl>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-4">
-                <CardTitle>Current values</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {busy ? (
-                  <div className="space-y-3">
-                    <Skeleton className="h-4 w-24" />
-                    <Skeleton className="h-4 w-36" />
-                    <Skeleton className="h-4 w-28" />
-                  </div>
-                ) : state.phase === "recording" ? (
-                  <div className="rounded-md border border-dashed border-zinc-800 px-4 py-8 text-center text-sm text-zinc-400">
-                    Recording is in progress
-                  </div>
-                ) : !ready ? (
-                  <div className="rounded-md border border-dashed border-zinc-800 px-4 py-8 text-center text-sm text-zinc-400">
-                    No recording
-                  </div>
-                ) : (
-                  <dl>
-                    <StatRow
-                      label="Pitch"
-                      value={
-                        state.analysis.medianF0
-                          ? `${state.analysis.medianF0.toFixed(1)} Hz`
-                          : "Unvoiced"
-                      }
-                    />
-                    <StatRow
-                      label="Formants"
-                      value={
-                        state.analysis.formantMedians.length > 0
-                          ? state.analysis.formantMedians
-                              .map((value) => Math.round(value))
-                              .join(" / ")
-                          : "Unavailable"
-                      }
-                    />
-                    <StatRow
-                      label="Selected edit"
-                      value={
-                        presets.find(
-                          (preset) =>
-                            JSON.stringify(preset.edit) ===
-                            JSON.stringify(state.selectedEdit),
-                        )?.label ?? "Unknown"
-                      }
-                    />
-                  </dl>
-                )}
-              </CardContent>
-            </Card>
-          </aside>
         </section>
       </div>
     </main>

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type WaveformCanvasProps = {
   readonly samples: Float32Array | Float64Array;
@@ -15,17 +15,44 @@ export function WaveformCanvas({
   samples,
   sampleRate,
   label,
-  width = 820,
+  width,
   height = 180,
   color = "#54d4c4",
   amplitudeReference,
   className,
 }: WaveformCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [measuredWidth, setMeasuredWidth] = useState(width ?? 0);
+
+  useEffect(() => {
+    if (width != null) {
+      setMeasuredWidth(width);
+      return;
+    }
+
+    const canvas = canvasRef.current;
+    if (!canvas) {
+      return;
+    }
+
+    const updateWidth = () => {
+      const nextWidth = Math.floor(canvas.getBoundingClientRect().width);
+      if (nextWidth > 0) {
+        setMeasuredWidth(nextWidth);
+      }
+    };
+
+    updateWidth();
+
+    const observer = new ResizeObserver(updateWidth);
+    observer.observe(canvas);
+
+    return () => observer.disconnect();
+  }, [width]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) {
+    if (!canvas || measuredWidth <= 0) {
       return;
     }
 
@@ -35,19 +62,19 @@ export function WaveformCanvas({
     }
 
     const dpr = window.devicePixelRatio || 1;
-    canvas.width = width * dpr;
+    canvas.width = measuredWidth * dpr;
     canvas.height = height * dpr;
     context.setTransform(1, 0, 0, 1, 0, 0);
     context.scale(dpr, dpr);
 
     context.fillStyle = "#091217";
-    context.fillRect(0, 0, width, height);
+    context.fillRect(0, 0, measuredWidth, height);
 
     context.strokeStyle = "rgba(255, 255, 255, 0.08)";
     context.lineWidth = 1;
     context.beginPath();
     context.moveTo(0, height / 2);
-    context.lineTo(width, height / 2);
+    context.lineTo(measuredWidth, height / 2);
     context.stroke();
 
     if (samples.length > 0) {
@@ -58,7 +85,7 @@ export function WaveformCanvas({
 
       const scale = Math.max(amplitudeReference ?? peak, 1e-3);
 
-      const pixels = Math.max(1, Math.floor(width));
+      const pixels = Math.max(1, Math.floor(measuredWidth));
       const samplesPerPixel = Math.max(1, Math.ceil(samples.length / pixels));
 
       context.strokeStyle = color;
@@ -105,17 +132,21 @@ export function WaveformCanvas({
 
       for (let stepIndex = 0; stepIndex <= steps; stepIndex++) {
         const time = (duration / steps) * stepIndex;
-        const x = (width / steps) * stepIndex;
-        context.fillText(`${time.toFixed(1)}s`, Math.min(width - 34, x + 4), height - 8);
+        const x = (measuredWidth / steps) * stepIndex;
+        context.fillText(
+          `${time.toFixed(1)}s`,
+          Math.min(measuredWidth - 34, x + 4),
+          height - 8,
+        );
       }
     }
-  }, [amplitudeReference, color, height, label, sampleRate, samples, width]);
+  }, [amplitudeReference, color, height, label, measuredWidth, sampleRate, samples]);
 
   return (
     <canvas
       ref={canvasRef}
       className={className}
-      style={{ width, height, borderRadius: 8 }}
+      style={{ width: width ?? "100%", height, borderRadius: 8 }}
     />
   );
 }

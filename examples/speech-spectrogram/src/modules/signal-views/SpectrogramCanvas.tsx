@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { magnitudeToDb } from "pragma-dsp/analysis";
 import type { StftResult } from "pragma-dsp/xform/stft";
@@ -27,16 +27,43 @@ export function SpectrogramCanvas({
   stft,
   formants,
   pitchTrack,
-  width = 820,
+  width,
   height = 320,
   maxFreqDisplay,
   className,
 }: SpectrogramCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [measuredWidth, setMeasuredWidth] = useState(width ?? 0);
+
+  useEffect(() => {
+    if (width != null) {
+      setMeasuredWidth(width);
+      return;
+    }
+
+    const canvas = canvasRef.current;
+    if (!canvas) {
+      return;
+    }
+
+    const updateWidth = () => {
+      const nextWidth = Math.floor(canvas.getBoundingClientRect().width);
+      if (nextWidth > 0) {
+        setMeasuredWidth(nextWidth);
+      }
+    };
+
+    updateWidth();
+
+    const observer = new ResizeObserver(updateWidth);
+    observer.observe(canvas);
+
+    return () => observer.disconnect();
+  }, [width]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) {
+    if (!canvas || measuredWidth <= 0) {
       return;
     }
 
@@ -46,7 +73,7 @@ export function SpectrogramCanvas({
     }
 
     const dpr = window.devicePixelRatio || 1;
-    canvas.width = width * dpr;
+    canvas.width = measuredWidth * dpr;
     canvas.height = height * dpr;
     context.setTransform(1, 0, 0, 1, 0, 0);
     context.scale(dpr, dpr);
@@ -55,7 +82,7 @@ export function SpectrogramCanvas({
     const displayMax = Math.min(maxFreqDisplay ?? sampleRate / 2, sampleRate / 2);
 
     context.fillStyle = "#091217";
-    context.fillRect(0, 0, width, height);
+    context.fillRect(0, 0, measuredWidth, height);
 
     if (frames.length === 0 || frequencies.length === 0) {
       return;
@@ -102,7 +129,7 @@ export function SpectrogramCanvas({
     offscreen.height = displayBins;
     offscreen.getContext("2d")?.putImageData(heatmap, 0, 0);
     context.imageSmoothingEnabled = false;
-    context.drawImage(offscreen, 0, 0, width, height);
+    context.drawImage(offscreen, 0, 0, measuredWidth, height);
 
     if (pitchTrack && pitchTrack.length > 0) {
       context.strokeStyle = "#ff9d5c";
@@ -117,7 +144,8 @@ export function SpectrogramCanvas({
           continue;
         }
 
-        const x = (index / frames.length) * width + width / frames.length / 2;
+        const x =
+          (index / frames.length) * measuredWidth + measuredWidth / frames.length / 2;
         const y = height - (f0 / displayMax) * height;
         if (!drawing) {
           context.moveTo(x, y);
@@ -138,7 +166,9 @@ export function SpectrogramCanvas({
           continue;
         }
 
-        const x = (frameIndex / frames.length) * width + width / frames.length / 2;
+        const x =
+          (frameIndex / frames.length) * measuredWidth +
+          measuredWidth / frames.length / 2;
         for (let formantIndex = 0; formantIndex < frame.formants.length; formantIndex++) {
           const frequency = frame.formants[formantIndex];
           if (frequency == null || frequency > displayMax) {
@@ -165,17 +195,21 @@ export function SpectrogramCanvas({
     if (lastTime > 0) {
       for (let stepIndex = 0; stepIndex <= 5; stepIndex++) {
         const time = (lastTime / 5) * stepIndex;
-        const x = (width / 5) * stepIndex;
-        context.fillText(`${time.toFixed(1)}s`, Math.min(width - 40, x + 4), height - 8);
+        const x = (measuredWidth / 5) * stepIndex;
+        context.fillText(
+          `${time.toFixed(1)}s`,
+          Math.min(measuredWidth - 40, x + 4),
+          height - 8,
+        );
       }
     }
-  }, [formants, height, maxFreqDisplay, pitchTrack, stft, width]);
+  }, [formants, height, maxFreqDisplay, measuredWidth, pitchTrack, stft]);
 
   return (
     <canvas
       ref={canvasRef}
       className={className}
-      style={{ width, height, borderRadius: 8 }}
+      style={{ width: width ?? "100%", height, borderRadius: 8 }}
     />
   );
 }
