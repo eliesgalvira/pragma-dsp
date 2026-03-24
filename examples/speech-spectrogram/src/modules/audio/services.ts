@@ -4,15 +4,47 @@ import {
   AudioIoError,
 } from "./domain";
 import type {
+  AudioIoErrorCode,
   AudioCaptureOptions,
   AudioPreviewFrame,
   AudioSamples,
   RecordingSession,
 } from "./domain";
 
-const toAudioIoError = (error: unknown): AudioIoError => {
+const classifyAudioError = (
+  error: unknown,
+  fallback: AudioIoErrorCode,
+): AudioIoErrorCode => {
+  if (error instanceof AudioIoError) {
+    return error.code;
+  }
+
+  if (error instanceof DOMException) {
+    switch (error.name) {
+      case "NotAllowedError":
+      case "PermissionDeniedError":
+      case "SecurityError":
+        return "permission-denied";
+      case "NotFoundError":
+      case "DevicesNotFoundError":
+      case "OverconstrainedError":
+      case "NotReadableError":
+      case "TrackStartError":
+        return "device-unavailable";
+      default:
+        return fallback;
+    }
+  }
+
+  return fallback;
+};
+
+const toAudioIoError = (
+  error: unknown,
+  fallback: AudioIoErrorCode = "unknown",
+): AudioIoError => {
   const message = error instanceof Error ? error.message : String(error);
-  return new AudioIoError(message, error);
+  return new AudioIoError(classifyAudioError(error, fallback), message, error);
 };
 
 class RollingBuffer {
@@ -131,7 +163,10 @@ const createStopPromise = (
     const handleError = (event: Event) => {
       cleanup();
       const recorderEvent = event as Event & { readonly error?: DOMException };
-      reject(recorderEvent.error ?? new Error("MediaRecorder failed"));
+      reject(
+        recorderEvent.error ??
+          new AudioIoError("recording-failed", "Recording failed while capturing audio."),
+      );
     };
 
     const cleanup = () => {
@@ -160,6 +195,24 @@ export class AudioInput extends ServiceMap.Service<
 >()("@speech/audio/AudioInput") {
   static readonly layer = Layer.succeed(this)({
     startRecording: Effect.fn("AudioInput.startRecording")(function* (options: AudioCaptureOptions) {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        return yield* Effect.fail(
+          new AudioIoError(
+            "unsupported-browser",
+            "This browser does not support microphone capture.",
+          ),
+        );
+      }
+
+      if (typeof MediaRecorder === "undefined") {
+        return yield* Effect.fail(
+          new AudioIoError(
+            "unsupported-browser",
+            "This browser does not support live audio recording.",
+          ),
+        );
+      }
+
       const stream = yield* Effect.tryPromise({
         try: () =>
           navigator.mediaDevices.getUserMedia({
@@ -169,7 +222,7 @@ export class AudioInput extends ServiceMap.Service<
               noiseSuppression: false,
             },
           }),
-        catch: toAudioIoError,
+        catch: (error) => toAudioIoError(error, "permission-denied"),
       });
 
       const audioContext = new AudioContext({ sampleRate: options.sampleRate });
@@ -248,7 +301,9 @@ export class AudioInput extends ServiceMap.Service<
           if (!stopPromise) {
             stopPromise = (async () => {
               const blob = await createStopPromise(recorder, chunks);
-              const decoded = await decodeAudioBlob(blob, options.sampleRate);
+              const decoded = await decodeAudioBlob(blob, options.sampleRate).catch((error) => {
+                throw toAudioIoError(error, "decoding-failed");
+              });
               await finalize();
               return decoded;
             })().catch(async (error) => {
@@ -259,7 +314,7 @@ export class AudioInput extends ServiceMap.Service<
 
           return stopPromise;
         },
-        catch: toAudioIoError,
+        catch: (error) => toAudioIoError(error, "recording-failed"),
       });
 
       const cancel = Effect.tryPromise({
@@ -269,7 +324,7 @@ export class AudioInput extends ServiceMap.Service<
           }
           await finalize();
         },
-        catch: toAudioIoError,
+        catch: (error) => toAudioIoError(error, "recording-failed"),
       });
 
       return { stop, cancel };
@@ -304,7 +359,7 @@ export class AudioOutput extends ServiceMap.Service<
             await context.close().catch(() => undefined);
           }
         },
-        catch: toAudioIoError,
+        catch: (error) => toAudioIoError(error, "playback-failed"),
       });
     }),
   });

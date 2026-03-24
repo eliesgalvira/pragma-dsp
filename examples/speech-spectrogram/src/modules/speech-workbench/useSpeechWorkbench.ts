@@ -15,13 +15,32 @@ import {
   SpeechAnalysis,
   type SpectralEditKind,
 } from "../speech-analysis";
-import { initialWorkbenchState, type LiveAnalysis, type WorkbenchState } from "./model";
+import {
+  initialWorkbenchState,
+  type LiveAnalysis,
+  type MicrophonePermissionState,
+  type WorkbenchState,
+} from "./model";
 
 const appLayer = Layer.mergeAll(AudioInput.layer, AudioOutput.layer, SpeechAnalysis.layer);
 const appRuntime = ManagedRuntime.make(appLayer);
 
 const formatError = (error: unknown) =>
   error instanceof Error ? error.message : String(error);
+
+const permissionFromError = (error: unknown): MicrophonePermissionState | null => {
+  if (!(error instanceof Error) || !("_tag" in error)) {
+    return null;
+  }
+
+  if ("code" in error) {
+    const code = error.code;
+    if (code === "permission-denied") return "denied";
+    if (code === "unsupported-browser") return "unsupported";
+  }
+
+  return null;
+};
 
 export function useSpeechWorkbench() {
   const sessionRef = useRef<RecordingSession | null>(null);
@@ -31,12 +50,15 @@ export function useSpeechWorkbench() {
 
   const handleError = useEffectEvent((error: unknown) => {
     const message = formatError(error);
+    const permission = permissionFromError(error);
     startTransition(() => {
       setState((current) => ({
         ...current,
         phase: current.recorded ? "ready" : "idle",
         error: message,
+        microphonePermission: permission ?? current.microphonePermission,
         playing: null,
+        applyingEdit: false,
       }));
     });
   });
@@ -111,6 +133,8 @@ export function useSpeechWorkbench() {
         error: null,
         playing: null,
         applyingEdit: false,
+        microphonePermission:
+          current.microphonePermission === "granted" ? "granted" : "requesting",
         live: null,
         recorded: null,
         analysis: null,
@@ -134,7 +158,11 @@ export function useSpeechWorkbench() {
       .then((session) => {
         sessionRef.current = session;
         startTransition(() => {
-          setState((current) => ({ ...current, phase: "recording" }));
+          setState((current) => ({
+            ...current,
+            phase: "recording",
+            microphonePermission: "granted",
+          }));
         });
       })
       .catch(handleError);
@@ -182,6 +210,7 @@ export function useSpeechWorkbench() {
             ...current,
             phase: "ready",
             applyingEdit: false,
+            microphonePermission: "granted",
             live: null,
             recorded: audio,
             analysis,
@@ -230,6 +259,72 @@ export function useSpeechWorkbench() {
       })
       .catch(handleError);
   });
+
+  useEffect(() => {
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+      startTransition(() => {
+        setState((current) => ({ ...current, microphonePermission: "unsupported" }));
+      });
+      return;
+    }
+
+    if (!("permissions" in navigator) || typeof navigator.permissions?.query !== "function") {
+      startTransition(() => {
+        setState((current) => ({
+          ...current,
+          microphonePermission:
+            current.microphonePermission === "unknown"
+              ? "prompt"
+              : current.microphonePermission,
+        }));
+      });
+      return;
+    }
+
+    let cancelled = false;
+    void navigator.permissions
+      .query({ name: "microphone" as PermissionName })
+      .then((status) => {
+        if (cancelled) {
+          return;
+        }
+
+        const readState = () =>
+          status.state === "granted"
+            ? "granted"
+            : status.state === "denied"
+              ? "denied"
+              : "prompt";
+
+        startTransition(() => {
+          setState((current) => ({ ...current, microphonePermission: readState() }));
+        });
+
+        status.onchange = () => {
+          startTransition(() => {
+            setState((current) => ({ ...current, microphonePermission: readState() }));
+          });
+        };
+      })
+      .catch(() => {
+        if (cancelled) {
+          return;
+        }
+        startTransition(() => {
+          setState((current) => ({
+            ...current,
+            microphonePermission:
+              current.microphonePermission === "unknown"
+                ? "prompt"
+                : current.microphonePermission,
+          }));
+        });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     return () => {

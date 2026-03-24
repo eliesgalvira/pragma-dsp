@@ -1,12 +1,23 @@
 import type { Effect } from "effect";
 
+export type AudioIoErrorCode =
+  | "permission-denied"
+  | "device-unavailable"
+  | "unsupported-browser"
+  | "recording-failed"
+  | "decoding-failed"
+  | "playback-failed"
+  | "unknown";
+
 export class AudioIoError extends Error {
   readonly _tag = "AudioIoError";
+  readonly code: AudioIoErrorCode;
   readonly originalCause?: unknown;
 
-  constructor(message: string, originalCause?: unknown) {
+  constructor(code: AudioIoErrorCode, message: string, originalCause?: unknown) {
     super(message);
     this.name = "AudioIoError";
+    this.code = code;
     this.originalCause = originalCause;
   }
 }

@@ -1,5 +1,6 @@
 import type * as React from "react";
 import {
+  AlertTriangle,
   LoaderCircle,
   Mic,
   RotateCcw,
@@ -8,6 +9,11 @@ import {
   WandSparkles,
 } from "lucide-react";
 
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from "../../components/ui/alert";
 import { Button } from "../../components/ui/button";
 import {
   Card,
@@ -76,6 +82,40 @@ function AnalysisSkeleton() {
   );
 }
 
+function EmptyChart({
+  label,
+  detail,
+}: {
+  readonly label: string;
+  readonly detail?: string;
+}) {
+  return (
+    <div className="flex h-[220px] items-center justify-center rounded-md border border-dashed border-zinc-800 bg-zinc-950 px-6 text-center">
+      <div className="space-y-1">
+        <p className="text-sm font-medium text-zinc-200">{label}</p>
+        {detail ? <p className="text-sm text-zinc-500">{detail}</p> : null}
+      </div>
+    </div>
+  );
+}
+
+function PermissionPrompt() {
+  return (
+    <div className="flex h-[220px] items-center justify-center rounded-md border border-zinc-800 bg-zinc-950 px-6">
+      <div className="max-w-md text-center">
+        <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-full bg-zinc-800">
+          <Mic className="size-5 text-zinc-100" />
+        </div>
+        <p className="text-base font-medium text-zinc-100">Waiting for permissions</p>
+        <p className="mt-2 text-sm text-zinc-400">
+          Grant site access to the microphone so it can record and calculate the
+          fourier transform in real time.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export function SpeechWorkbench() {
   const {
     state,
@@ -90,7 +130,20 @@ export function SpeechWorkbench() {
 
   const liveAnalysis = state.live?.analysis;
   const ready = state.phase === "ready" && state.recorded && state.analysis;
+  const hasRecording = state.recorded !== null;
   const busy = state.phase === "starting" || state.phase === "analyzing";
+  const showPermissionWarning =
+    state.microphonePermission === "prompt" ||
+    state.microphonePermission === "requesting" ||
+    state.microphonePermission === "denied";
+  const permissionWarningTitle =
+    state.microphonePermission === "denied"
+      ? "Microphone access is blocked"
+      : "Give the site permission to access the microphone";
+  const permissionWarningBody =
+    state.microphonePermission === "denied"
+      ? "Enable microphone access in the browser and try recording again. All signal processing happens on your machine."
+      : "All signal processing happens on your machine.";
 
   return (
     <main className="min-h-screen bg-zinc-950 text-zinc-100">
@@ -114,6 +167,23 @@ export function SpeechWorkbench() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
+                {showPermissionWarning && (
+                  <Alert variant="warning">
+                    <AlertTitle>{permissionWarningTitle}</AlertTitle>
+                    <AlertDescription>{permissionWarningBody}</AlertDescription>
+                  </Alert>
+                )}
+
+                {state.microphonePermission === "unsupported" && (
+                  <Alert variant="destructive">
+                    <AlertTitle>Microphone recording is not supported</AlertTitle>
+                    <AlertDescription>
+                      This browser does not expose the APIs needed for live capture or
+                      recording.
+                    </AlertDescription>
+                  </Alert>
+                )}
+
                 <div className="flex flex-wrap items-center gap-3">
                   {(state.phase === "idle" || state.phase === "ready") && (
                     <Button onClick={startRecording} disabled={busy}>
@@ -133,40 +203,45 @@ export function SpeechWorkbench() {
                     </Button>
                   )}
 
-                  <Button
-                    variant="outline"
-                    onClick={reset}
-                    disabled={state.phase === "idle" && !state.error}
-                  >
-                    <RotateCcw className="size-4" />
-                    Reset
-                  </Button>
+                  {hasRecording && (
+                    <>
+                      <Button variant="outline" onClick={reset}>
+                        <RotateCcw className="size-4" />
+                        Reset
+                      </Button>
 
-                  <Button
-                    variant="outline"
-                    onClick={playOriginal}
-                    disabled={!ready || state.playing !== null}
-                  >
-                    {state.playing === "original" ? (
-                      <LoaderCircle className="size-4 animate-spin" />
-                    ) : (
-                      <Volume2 className="size-4" />
-                    )}
-                    Play original
-                  </Button>
+                      <Button
+                        variant="outline"
+                        onClick={playOriginal}
+                        disabled={!ready || state.playing !== null}
+                      >
+                        {state.playing === "original" ? (
+                          <LoaderCircle className="size-4 animate-spin" />
+                        ) : (
+                          <Volume2 className="size-4" />
+                        )}
+                        Play original
+                      </Button>
 
-                  <Button
-                    variant="outline"
-                    onClick={playEdited}
-                    disabled={!ready || !state.edited || state.playing !== null || state.applyingEdit}
-                  >
-                    {state.playing === "edited" ? (
-                      <LoaderCircle className="size-4 animate-spin" />
-                    ) : (
-                      <WandSparkles className="size-4" />
-                    )}
-                    Play edited
-                  </Button>
+                      <Button
+                        variant="outline"
+                        onClick={playEdited}
+                        disabled={
+                          !ready ||
+                          !state.edited ||
+                          state.playing !== null ||
+                          state.applyingEdit
+                        }
+                      >
+                        {state.playing === "edited" ? (
+                          <LoaderCircle className="size-4 animate-spin" />
+                        ) : (
+                          <WandSparkles className="size-4" />
+                        )}
+                        Play edited
+                      </Button>
+                    </>
+                  )}
                 </div>
 
                 <div className="text-sm text-zinc-400">
@@ -179,88 +254,99 @@ export function SpeechWorkbench() {
                 </div>
 
                 {state.error && (
-                  <div className="rounded-md border border-rose-900 bg-rose-950/40 px-3 py-2 text-sm text-rose-200">
-                    {state.error}
-                  </div>
+                  <Alert variant="destructive">
+                    <AlertTitle>Recording error</AlertTitle>
+                    <AlertDescription>{state.error}</AlertDescription>
+                  </Alert>
                 )}
               </CardContent>
             </Card>
 
-            {(state.phase === "recording" || state.live) && (
-              <Card>
-                <CardHeader className="pb-4">
-                  <CardTitle>Live monitor</CardTitle>
-                  <CardDescription>
-                    The rolling window uses the highest peak seen in this recording session.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-5">
-                  {!state.live || !liveAnalysis ? (
-                    <AnalysisSkeleton />
-                  ) : (
-                    <>
-                      <div className="grid gap-4 md:grid-cols-2">
-                        <CanvasShell title="Waveform">
-                          <WaveformCanvas
-                            samples={state.live.frame.samples}
-                            sampleRate={state.live.frame.sampleRate}
-                            label="Live waveform"
-                            color="#00d4aa"
-                            amplitudeReference={state.live.frame.peakAmplitude}
-                            className="w-full"
-                          />
-                        </CanvasShell>
-
-                        <div className="rounded-md border border-zinc-800 bg-zinc-950 p-4">
-                          <dl>
-                            <StatRow
-                              label="Window"
-                              value={`${(state.live.frame.elapsedMs / 1000).toFixed(1)} s`}
-                            />
-                            <StatRow
-                              label="Input level"
-                              value={`${(state.live.frame.level * 100).toFixed(1)} %`}
-                            />
-                            <StatRow
-                              label="Session peak"
-                              value={`${(state.live.frame.peakAmplitude * 100).toFixed(1)} %`}
-                            />
-                            <StatRow
-                              label="Pitch"
-                              value={
-                                liveAnalysis.medianF0
-                                  ? `${liveAnalysis.medianF0.toFixed(1)} Hz`
-                                  : "Unvoiced"
-                              }
-                            />
-                            <StatRow
-                              label="Formants"
-                              value={
-                                liveAnalysis.formantMedians.length > 0
-                                  ? liveAnalysis.formantMedians
-                                      .map((value) => Math.round(value))
-                                      .join(" / ")
-                                  : "Tracking"
-                              }
-                            />
-                          </dl>
-                        </div>
-                      </div>
-
-                      <CanvasShell title="Spectrogram">
-                        <SpectrogramCanvas
-                          stft={liveAnalysis.stft}
-                          pitchTrack={liveAnalysis.pitchTrack}
-                          formants={liveAnalysis.formants}
-                          maxFreqDisplay={Math.min(state.live.frame.sampleRate / 2, 8000)}
+            <Card>
+              <CardHeader className="pb-4">
+                <CardTitle>Live monitor</CardTitle>
+                <CardDescription>
+                  The rolling window uses the highest peak seen in this recording session.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                {state.phase === "starting" ? (
+                  <PermissionPrompt />
+                ) : !state.live || !liveAnalysis ? (
+                  <>
+                    <CanvasShell title="Waveform">
+                      <EmptyChart label="No recording" detail="Start a recording to show the live signal." />
+                    </CanvasShell>
+                    <CanvasShell title="Spectrogram">
+                      <EmptyChart
+                        label="No recording"
+                        detail="The live spectrogram appears while microphone capture is active."
+                      />
+                    </CanvasShell>
+                  </>
+                ) : (
+                  <>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <CanvasShell title="Waveform">
+                        <WaveformCanvas
+                          samples={state.live.frame.samples}
+                          sampleRate={state.live.frame.sampleRate}
+                          label="Live waveform"
+                          color="#00d4aa"
+                          amplitudeReference={state.live.frame.peakAmplitude}
                           className="w-full"
                         />
                       </CanvasShell>
-                    </>
-                  )}
-                </CardContent>
-              </Card>
-            )}
+
+                      <div className="rounded-md border border-zinc-800 bg-zinc-950 p-4">
+                        <dl>
+                          <StatRow
+                            label="Window"
+                            value={`${(state.live.frame.elapsedMs / 1000).toFixed(1)} s`}
+                          />
+                          <StatRow
+                            label="Input level"
+                            value={`${(state.live.frame.level * 100).toFixed(1)} %`}
+                          />
+                          <StatRow
+                            label="Session peak"
+                            value={`${(state.live.frame.peakAmplitude * 100).toFixed(1)} %`}
+                          />
+                          <StatRow
+                            label="Pitch"
+                            value={
+                              liveAnalysis.medianF0
+                                ? `${liveAnalysis.medianF0.toFixed(1)} Hz`
+                                : "Unvoiced"
+                            }
+                          />
+                          <StatRow
+                            label="Formants"
+                            value={
+                              liveAnalysis.formantMedians.length > 0
+                                ? liveAnalysis.formantMedians
+                                    .map((value) => Math.round(value))
+                                    .join(" / ")
+                                : "Tracking"
+                            }
+                          />
+                        </dl>
+                      </div>
+                    </div>
+
+                    <CanvasShell title="Spectrogram">
+                      <SpectrogramCanvas
+                        stft={liveAnalysis.stft}
+                        pitchTrack={liveAnalysis.pitchTrack}
+                        formants={liveAnalysis.formants}
+                        maxFreqDisplay={Math.min(state.live.frame.sampleRate / 2, 8000)}
+                        className="w-full"
+                      />
+                    </CanvasShell>
+                  </>
+                )}
+              </CardContent>
+            </Card>
 
             <Card>
               <CardHeader className="pb-4">
@@ -273,8 +359,13 @@ export function SpeechWorkbench() {
                 {busy ? (
                   <AnalysisSkeleton />
                 ) : !ready ? (
-                  <div className="rounded-md border border-dashed border-zinc-800 px-4 py-10 text-sm text-zinc-400">
-                    Record audio to populate the analysis panels.
+                  <div className="space-y-5">
+                    <CanvasShell title="Waveform">
+                      <EmptyChart label="No recording" />
+                    </CanvasShell>
+                    <CanvasShell title="Spectrogram">
+                      <EmptyChart label="No recording" />
+                    </CanvasShell>
                   </div>
                 ) : (
                   <Tabs defaultValue="original" className="w-full">
@@ -344,7 +435,8 @@ export function SpeechWorkbench() {
                       <div className="flex flex-wrap gap-2">
                         {presets.map((preset) => {
                           const active =
-                            JSON.stringify(preset.edit) === JSON.stringify(state.selectedEdit);
+                            JSON.stringify(preset.edit) ===
+                            JSON.stringify(state.selectedEdit);
                           return (
                             <Button
                               key={preset.label}
@@ -424,11 +516,15 @@ export function SpeechWorkbench() {
                 <CardTitle>Current values</CardTitle>
               </CardHeader>
               <CardContent>
-                {!ready ? (
+                {busy ? (
                   <div className="space-y-3">
                     <Skeleton className="h-4 w-24" />
                     <Skeleton className="h-4 w-36" />
                     <Skeleton className="h-4 w-28" />
+                  </div>
+                ) : !ready ? (
+                  <div className="rounded-md border border-dashed border-zinc-800 px-4 py-8 text-center text-sm text-zinc-400">
+                    No recording
                   </div>
                 ) : (
                   <dl>
@@ -497,6 +593,15 @@ export function SpeechWorkbench() {
                   />
                   Spectral edit
                 </div>
+                {(state.microphonePermission === "denied" ||
+                  state.microphonePermission === "unsupported") && (
+                  <div className="flex items-start gap-2 border-t border-zinc-800 pt-3 text-amber-200">
+                    <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+                    <span>
+                      Recording is currently unavailable until microphone access is restored.
+                    </span>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </aside>

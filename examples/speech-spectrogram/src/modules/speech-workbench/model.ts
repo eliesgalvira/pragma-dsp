@@ -6,6 +6,14 @@ import {
   type SpectralEditKind,
 } from "../speech-analysis";
 
+export type MicrophonePermissionState =
+  | "unknown"
+  | "prompt"
+  | "requesting"
+  | "granted"
+  | "denied"
+  | "unsupported";
+
 export type LiveAnalysis = {
   readonly frame: AudioPreviewFrame;
   readonly analysis: SignalAnalysis;
@@ -16,6 +24,7 @@ export type WorkbenchState = {
   readonly error: string | null;
   readonly playing: "original" | "edited" | null;
   readonly applyingEdit: boolean;
+  readonly microphonePermission: MicrophonePermissionState;
   readonly selectedEdit: SpectralEditKind;
   readonly live: LiveAnalysis | null;
   readonly recorded: AudioSamples | null;
@@ -28,6 +37,7 @@ export const initialWorkbenchState = (): WorkbenchState => ({
   error: null,
   playing: null,
   applyingEdit: false,
+  microphonePermission: "unknown",
   selectedEdit: DEFAULT_SPECTRAL_EDIT,
   live: null,
   recorded: null,
