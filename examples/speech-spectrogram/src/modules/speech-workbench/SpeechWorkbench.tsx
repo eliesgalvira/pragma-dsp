@@ -16,6 +16,7 @@ import {
   CardTitle,
 } from "../../components/ui/card";
 import { Skeleton } from "../../components/ui/skeleton";
+import { Switch } from "../../components/ui/switch";
 import { cn } from "../../lib/utils";
 import type { AudioSamples } from "../audio";
 import { SpectrogramCanvas, WaveformCanvas } from "../signal-views";
@@ -74,14 +75,19 @@ function StatRow({
 
 function CanvasShell({
   title,
+  actions,
   children,
 }: {
   readonly title: string;
+  readonly actions?: React.ReactNode;
   readonly children: React.ReactNode;
 }) {
   return (
     <div className="space-y-3">
-      <h3 className="text-sm font-medium text-zinc-200">{title}</h3>
+      <div className="flex min-h-6 items-center gap-3">
+        <h3 className="text-sm font-medium text-zinc-200">{title}</h3>
+        {actions ? <div className="flex items-center gap-2">{actions}</div> : null}
+      </div>
       <div className="overflow-hidden rounded-md border border-zinc-800 bg-black">
         {children}
       </div>
@@ -235,6 +241,7 @@ export function SpeechWorkbench() {
     setSelectedEdit,
   } = useSpeechWorkbench();
   const [showOriginalReference, setShowOriginalReference] = useState(false);
+  const [showFormants, setShowFormants] = useState(true);
 
   const liveAnalysis = state.live?.analysis;
   const ready = state.phase === "ready" && state.recorded && state.analysis;
@@ -611,7 +618,15 @@ export function SpeechWorkbench() {
                   </PanelShell>
                 </div>
 
-                <CanvasShell title="Spectrogram">
+                <CanvasShell
+                  title="Spectrogram"
+                  actions={
+                    <label className="flex items-center gap-2 text-xs text-zinc-400">
+                      <span>Formants</span>
+                      <Switch checked={showFormants} onCheckedChange={setShowFormants} />
+                    </label>
+                  }
+                >
                   {signalMode === "busy" ? (
                     <Skeleton className="h-[320px] w-full" />
                   ) : starting ? (
@@ -624,7 +639,7 @@ export function SpeechWorkbench() {
                     <SpectrogramCanvas
                       stft={liveAnalysis!.stft}
                       pitchTrack={liveAnalysis!.pitchTrack}
-                      formants={liveAnalysis!.formants}
+                      formants={showFormants ? liveAnalysis!.formants : undefined}
                       maxFreqDisplay={Math.min(state.live!.frame.sampleRate / 2, 8000)}
                       className="w-full"
                     />
@@ -644,9 +659,11 @@ export function SpeechWorkbench() {
                             : state.analysis!.pitchTrack
                         }
                         formants={
-                          showEditedSignal
-                            ? state.edited!.analysis.formants
-                            : state.analysis!.formants
+                          showFormants
+                            ? showEditedSignal
+                              ? state.edited!.analysis.formants
+                              : state.analysis!.formants
+                            : undefined
                         }
                         maxFreqDisplay={Math.min(state.recorded!.sampleRate / 2, 8000)}
                         className="w-full"
