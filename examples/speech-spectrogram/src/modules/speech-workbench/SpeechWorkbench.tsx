@@ -287,6 +287,7 @@ export function SpeechWorkbench() {
   const [showFormants, setShowFormants] = useState(true);
   const [draftReal, setDraftReal] = useState(1);
   const [draftImaginary, setDraftImaginary] = useState(0);
+  const [draftConjugate, setDraftConjugate] = useState(false);
 
   const liveAnalysis = state.live?.analysis;
   const ready = state.phase === "ready" && state.recorded && state.analysis;
@@ -344,11 +345,13 @@ export function SpeechWorkbench() {
     if (state.selectedEdit.type === "identity") {
       setDraftReal(1);
       setDraftImaginary(0);
+      setDraftConjugate(false);
       return;
     }
 
     setDraftReal(state.selectedEdit.real);
     setDraftImaginary(state.selectedEdit.imaginary);
+    setDraftConjugate(state.selectedEdit.conjugate);
   }, [state.selectedEdit]);
 
   useEffect(() => {
@@ -375,7 +378,7 @@ export function SpeechWorkbench() {
     const roundedReal = Number(draftReal.toFixed(2));
     const roundedImaginary = Number(draftImaginary.toFixed(2));
 
-    if (roundedReal === 1 && roundedImaginary === 0) {
+    if (roundedReal === 1 && roundedImaginary === 0 && !draftConjugate) {
       setSelectedEdit({ type: "identity" });
       return;
     }
@@ -384,6 +387,7 @@ export function SpeechWorkbench() {
       type: "complex_multiply",
       real: roundedReal,
       imaginary: roundedImaginary,
+      conjugate: draftConjugate,
     });
   };
 
@@ -837,6 +841,14 @@ export function SpeechWorkbench() {
                     </div>
 
                     <div className="flex flex-wrap items-center gap-3">
+                      <label className="flex items-center gap-2 text-sm text-zinc-400">
+                        <span>Conjugate</span>
+                        <Switch
+                          checked={draftConjugate}
+                          onCheckedChange={setDraftConjugate}
+                          disabled={signalMode !== "analysis"}
+                        />
+                      </label>
                       <Button
                         variant="secondary"
                         disabled={signalMode !== "analysis" || state.applyingEdit}

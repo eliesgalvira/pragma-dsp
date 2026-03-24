@@ -38,7 +38,12 @@ export type SignalAnalysis = {
 
 export type SpectralEditKind =
   | { readonly type: "identity" }
-  | { readonly type: "complex_multiply"; readonly real: number; readonly imaginary: number };
+  | {
+      readonly type: "complex_multiply";
+      readonly real: number;
+      readonly imaginary: number;
+      readonly conjugate: boolean;
+    };
 
 export const DEFAULT_SPECTRAL_EDIT: SpectralEditKind = { type: "identity" };
 
@@ -51,7 +56,11 @@ export const spectralEditEquals = (left: SpectralEditKind, right: SpectralEditKi
     return false;
   }
 
-  return left.real === right.real && left.imaginary === right.imaginary;
+  return (
+    left.real === right.real &&
+    left.imaginary === right.imaginary &&
+    left.conjugate === right.conjugate
+  );
 };
 
 export const formatSpectralEditLabel = (edit: SpectralEditKind) => {
@@ -60,7 +69,8 @@ export const formatSpectralEditLabel = (edit: SpectralEditKind) => {
   }
 
   const sign = edit.imaginary < 0 ? "-" : "+";
-  return `${edit.real.toFixed(2)} ${sign} ${Math.abs(edit.imaginary).toFixed(2)}i`;
+  const multiplier = `${edit.real.toFixed(2)} ${sign} ${Math.abs(edit.imaginary).toFixed(2)}i`;
+  return edit.conjugate ? `${multiplier}, conjugated` : multiplier;
 };
 
 export type EditedSignal = {

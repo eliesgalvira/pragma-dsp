@@ -26,11 +26,14 @@ export const applySpectralEdit = (
       return input;
 
     case "complex_multiply": {
-      if (edit.real === 1 && edit.imaginary === 0) {
+      if (edit.real === 1 && edit.imaginary === 0 && !edit.conjugate) {
         return input;
       }
 
       const chain = fft.forward(input).mulScalar(edit.real, edit.imaginary);
+      if (edit.conjugate) {
+        chain.conj();
+      }
       return chain.inverseInto(output).real;
     }
   }
