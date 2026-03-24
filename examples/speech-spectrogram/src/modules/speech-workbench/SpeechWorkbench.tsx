@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type * as React from "react";
 import {
   Mic,
@@ -8,6 +8,19 @@ import {
   WandSparkles,
 } from "lucide-react";
 
+import {
+  AudioPlayer,
+  AudioPlayerControlBar,
+  AudioPlayerDurationDisplay,
+  AudioPlayerElement,
+  AudioPlayerMuteButton,
+  AudioPlayerPlayButton,
+  AudioPlayerSeekBackwardButton,
+  AudioPlayerSeekForwardButton,
+  AudioPlayerTimeDisplay,
+  AudioPlayerTimeRange,
+  AudioPlayerVolumeRange,
+} from "@/components/ai-elements/audio-player";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { Button } from "../../components/ui/button";
 import {
@@ -19,6 +32,7 @@ import {
 } from "../../components/ui/card";
 import { Skeleton } from "../../components/ui/skeleton";
 import { cn } from "../../lib/utils";
+import type { AudioSamples } from "../audio";
 import { SpectrogramCanvas, WaveformCanvas } from "../signal-views";
 import { useSpeechWorkbench } from "./useSpeechWorkbench";
 
@@ -185,6 +199,51 @@ const peak = (samples: Float32Array) => {
   return max;
 };
 
+const toWavDataUrl = ({ samples, sampleRate }: AudioSamples) => {
+  const bytesPerSample = 2;
+  const dataSize = samples.length * bytesPerSample;
+  const buffer = new ArrayBuffer(44 + dataSize);
+  const view = new DataView(buffer);
+
+  const writeString = (offset: number, value: string) => {
+    for (let index = 0; index < value.length; index++) {
+      view.setUint8(offset + index, value.charCodeAt(index));
+    }
+  };
+
+  writeString(0, "RIFF");
+  view.setUint32(4, 36 + dataSize, true);
+  writeString(8, "WAVE");
+  writeString(12, "fmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * bytesPerSample, true);
+  view.setUint16(32, bytesPerSample, true);
+  view.setUint16(34, 16, true);
+  writeString(36, "data");
+  view.setUint32(40, dataSize, true);
+
+  let offset = 44;
+  for (let index = 0; index < samples.length; index++) {
+    const raw = samples[index] ?? 0;
+    const sample = Number.isFinite(raw) ? Math.max(-1, Math.min(1, raw)) : 0;
+    view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7fff, true);
+    offset += 2;
+  }
+
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  const chunkSize = 0x8000;
+  for (let index = 0; index < bytes.length; index += chunkSize) {
+    const chunk = bytes.subarray(index, Math.min(index + chunkSize, bytes.length));
+    binary += String.fromCharCode(...chunk);
+  }
+
+  return `data:audio/wav;base64,${btoa(binary)}`;
+};
+
 export function SpeechWorkbench() {
   const {
     state,
@@ -238,6 +297,16 @@ export function SpeechWorkbench() {
         : "empty";
   const valuePanelTitle =
     signalMode === "analysis" && showEditedSignal ? "Difference values" : "Session values";
+  const displayedAudio =
+    signalMode === "analysis"
+      ? showEditedSignal && state.edited
+        ? state.edited.audio
+        : state.recorded
+      : null;
+  const audioSrc = useMemo(
+    () => (displayedAudio ? toWavDataUrl(displayedAudio) : null),
+    [displayedAudio],
+  );
 
   useEffect(() => {
     if (!hasActiveEdit && showOriginalReference) {
@@ -611,6 +680,44 @@ export function SpeechWorkbench() {
                     />
                   )}
                 </CanvasShell>
+
+                <PanelShell title="Audio">
+                  <div className="rounded-md border border-zinc-800 bg-zinc-950 p-4">
+                    {signalMode === "busy" ? (
+                      <div className="space-y-3">
+                        <Skeleton className="h-9 w-full" />
+                        <Skeleton className="h-9 w-full" />
+                      </div>
+                    ) : audioSrc ? (
+                      <AudioPlayer className="w-full">
+                        <AudioPlayerElement
+                          key={audioSrc}
+                          src={audioSrc}
+                          preload="metadata"
+                        />
+                        <AudioPlayerControlBar className="flex w-full flex-wrap items-center gap-2">
+                          <AudioPlayerPlayButton />
+                          <AudioPlayerSeekBackwardButton />
+                          <AudioPlayerSeekForwardButton />
+                          <AudioPlayerTimeDisplay showDuration={false} />
+                          <AudioPlayerTimeRange className="min-w-[160px] flex-1" />
+                          <AudioPlayerDurationDisplay />
+                          <AudioPlayerMuteButton />
+                          <AudioPlayerVolumeRange className="w-20" />
+                        </AudioPlayerControlBar>
+                      </AudioPlayer>
+                    ) : (
+                      <div className="flex min-h-20 items-center justify-center text-center">
+                        <div className="space-y-1">
+                          <p className="text-sm font-medium text-zinc-200">No audio loaded</p>
+                          <p className="text-sm text-zinc-500">
+                            The player appears once a processed recording is available.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </PanelShell>
 
                 <PanelShell title="Edit controls">
                   <div className="space-y-3 rounded-md border border-zinc-800 bg-zinc-950 p-4">

@@ -10,6 +10,7 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
+      '@': path.resolve(__dirname, './src'),
       'pragma-dsp/xform/fourier-fluent': path.join(dspRoot, 'xform/fourier-fluent.ts'),
       'pragma-dsp/xform/fourier': path.join(dspRoot, 'xform/fourier.ts'),
       'pragma-dsp/xform/stft': path.join(dspRoot, 'xform/stft.ts'),

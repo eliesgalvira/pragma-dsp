@@ -24,7 +24,9 @@
       }
     ],
 
+    "baseUrl": ".",
     "paths": {
+      "@/*": ["./src/*"],
       "pragma-dsp": ["../../src/index.ts"],
       "pragma-dsp/analysis": ["../../src/analysis/index.ts"],
       "pragma-dsp/xform/stft": ["../../src/xform/stft.ts"],
