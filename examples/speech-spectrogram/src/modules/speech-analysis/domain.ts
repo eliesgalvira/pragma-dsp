@@ -38,33 +38,30 @@ export type SignalAnalysis = {
 
 export type SpectralEditKind =
   | { readonly type: "identity" }
-  | { readonly type: "scale"; readonly factor: number }
-  | { readonly type: "multiply_by_i" }
-  | { readonly type: "conjugate" }
-  | { readonly type: "negate" }
-  | { readonly type: "scale_and_conjugate"; readonly factor: number };
+  | { readonly type: "complex_multiply"; readonly real: number; readonly imaginary: number };
 
-export type SpectralEditPreset = {
-  readonly id: string;
-  readonly label: string;
-  readonly edit: SpectralEditKind;
+export const DEFAULT_SPECTRAL_EDIT: SpectralEditKind = { type: "identity" };
+
+export const spectralEditEquals = (left: SpectralEditKind, right: SpectralEditKind) => {
+  if (left.type === "identity" && right.type === "identity") {
+    return true;
+  }
+
+  if (left.type !== "complex_multiply" || right.type !== "complex_multiply") {
+    return false;
+  }
+
+  return left.real === right.real && left.imaginary === right.imaginary;
 };
 
-export const SPECTRAL_EDIT_PRESETS: ReadonlyArray<SpectralEditPreset> = [
-  { id: "original", label: "Original", edit: { type: "identity" } },
-  { id: "scale-x4", label: "Scale x4", edit: { type: "scale", factor: 4 } },
-  { id: "scale-x025", label: "Scale x0.25", edit: { type: "scale", factor: 0.25 } },
-  { id: "multiply-by-i", label: "Multiply by i", edit: { type: "multiply_by_i" } },
-  { id: "conjugate", label: "Conjugate", edit: { type: "conjugate" } },
-  { id: "negate", label: "Negate", edit: { type: "negate" } },
-  {
-    id: "scale-x2-conjugate",
-    label: "Scale x2 + Conjugate",
-    edit: { type: "scale_and_conjugate", factor: 2 },
-  },
-];
+export const formatSpectralEditLabel = (edit: SpectralEditKind) => {
+  if (edit.type === "identity") {
+    return "Original";
+  }
 
-export const DEFAULT_SPECTRAL_EDIT = SPECTRAL_EDIT_PRESETS[0]!.edit;
+  const sign = edit.imaginary < 0 ? "-" : "+";
+  return `${edit.real.toFixed(2)} ${sign} ${Math.abs(edit.imaginary).toFixed(2)}i`;
+};
 
 export type EditedSignal = {
   readonly audio: AudioSamples;

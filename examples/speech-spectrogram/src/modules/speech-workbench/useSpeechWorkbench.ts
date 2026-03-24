@@ -11,9 +11,9 @@ import { Effect, Layer, ManagedRuntime } from "effect";
 import { AudioInput, type AudioPreviewFrame, type RecordingSession } from "../audio";
 import {
   DEFAULT_ANALYSIS_CONFIG,
-  SPECTRAL_EDIT_PRESETS,
   SpeechAnalysis,
   type SpectralEditKind,
+  spectralEditEquals,
 } from "../speech-analysis";
 import {
   initialWorkbenchState,
@@ -289,7 +289,7 @@ export function useSpeechWorkbench() {
 
   const setSelectedEdit = useCallback((edit: SpectralEditKind) => {
     setState((current) => {
-      if (current.selectedEdit === edit) {
+      if (spectralEditEquals(current.selectedEdit, edit)) {
         return current;
       }
 
@@ -334,7 +334,7 @@ export function useSpeechWorkbench() {
     if (state.phase !== "ready" || !state.recorded) {
       return;
     }
-    if (state.editedFor === state.selectedEdit) {
+    if (state.editedFor && spectralEditEquals(state.editedFor, state.selectedEdit)) {
       return;
     }
 
@@ -356,7 +356,10 @@ export function useSpeechWorkbench() {
 
         startTransition(() => {
           setState((current) => {
-            if (current.recorded !== audio || current.selectedEdit !== edit) {
+            if (
+              current.recorded !== audio ||
+              !spectralEditEquals(current.selectedEdit, edit)
+            ) {
               return current;
             }
             return { ...current, edited, editedFor: edit, applyingEdit: false };
@@ -464,7 +467,6 @@ export function useSpeechWorkbench() {
 
   return {
     state,
-    presets: SPECTRAL_EDIT_PRESETS,
     startRecording,
     stopRecording,
     reset,

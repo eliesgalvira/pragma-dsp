@@ -77,11 +77,7 @@ const analyzeInternal = (audio: AudioSamples, config: AnalysisConfig): SignalAna
 };
 
 const trimEditedSignal = (edited: Float64Array, originalLength: number, edit: SpectralEditKind) => {
-  const offset =
-    edit.type === "conjugate" || edit.type === "scale_and_conjugate"
-      ? edited.length - originalLength
-      : 0;
-
+  const offset = 0;
   const signal = new Float32Array(originalLength);
   for (let index = 0; index < originalLength; index++) {
     signal[index] = edited[offset + index] ?? 0;

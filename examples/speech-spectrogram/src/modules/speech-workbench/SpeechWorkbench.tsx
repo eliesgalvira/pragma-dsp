@@ -16,10 +16,12 @@ import {
   CardTitle,
 } from "../../components/ui/card";
 import { Skeleton } from "../../components/ui/skeleton";
+import { Slider } from "../../components/ui/slider";
 import { Switch } from "../../components/ui/switch";
 import { cn } from "../../lib/utils";
 import type { AudioSamples } from "../audio";
 import { SpectrogramCanvas, WaveformCanvas } from "../signal-views";
+import { formatSpectralEditLabel } from "../speech-analysis";
 import { useSpeechWorkbench } from "./useSpeechWorkbench";
 
 const AudioPlayerPanel = lazy(() =>
@@ -97,14 +99,19 @@ function CanvasShell({
 
 function PanelShell({
   title,
+  actions,
   children,
 }: {
   readonly title: string;
+  readonly actions?: React.ReactNode;
   readonly children: React.ReactNode;
 }) {
   return (
     <div className="space-y-3">
-      <h3 className="text-sm font-medium text-zinc-200">{title}</h3>
+      <div className="flex min-h-6 items-center gap-3">
+        <h3 className="text-sm font-medium text-zinc-200">{title}</h3>
+        {actions ? <div className="flex items-center gap-2">{actions}</div> : null}
+      </div>
       {children}
     </div>
   );
@@ -270,7 +277,6 @@ const toWavBlob = ({ samples, sampleRate }: AudioSamples) => {
 export function SpeechWorkbench() {
   const {
     state,
-    presets,
     startRecording,
     stopRecording,
     reset,
@@ -279,6 +285,8 @@ export function SpeechWorkbench() {
   } = useSpeechWorkbench();
   const [showOriginalReference, setShowOriginalReference] = useState(false);
   const [showFormants, setShowFormants] = useState(true);
+  const [draftReal, setDraftReal] = useState(1);
+  const [draftImaginary, setDraftImaginary] = useState(0);
 
   const liveAnalysis = state.live?.analysis;
   const ready = state.phase === "ready" && state.recorded && state.analysis;
@@ -298,8 +306,7 @@ export function SpeechWorkbench() {
     state.phase === "starting" ||
     state.phase === "analyzing";
   const hasActiveEdit = state.selectedEdit.type !== "identity";
-  const selectedPreset = presets.find((preset) => preset.edit === state.selectedEdit);
-  const selectedPresetLabel = selectedPreset?.label ?? "Unknown";
+  const appliedEditLabel = formatSpectralEditLabel(state.selectedEdit);
   const showEditedSignal =
     Boolean(ready) &&
     hasActiveEdit &&
@@ -334,6 +341,17 @@ export function SpeechWorkbench() {
   const [audioSrc, setAudioSrc] = useState<string | null>(null);
 
   useEffect(() => {
+    if (state.selectedEdit.type === "identity") {
+      setDraftReal(1);
+      setDraftImaginary(0);
+      return;
+    }
+
+    setDraftReal(state.selectedEdit.real);
+    setDraftImaginary(state.selectedEdit.imaginary);
+  }, [state.selectedEdit]);
+
+  useEffect(() => {
     if (!hasActiveEdit && showOriginalReference) {
       setShowOriginalReference(false);
     }
@@ -352,6 +370,22 @@ export function SpeechWorkbench() {
       URL.revokeObjectURL(nextUrl);
     };
   }, [displayedAudio]);
+
+  const applyTransformation = () => {
+    const roundedReal = Number(draftReal.toFixed(2));
+    const roundedImaginary = Number(draftImaginary.toFixed(2));
+
+    if (roundedReal === 1 && roundedImaginary === 0) {
+      setSelectedEdit({ type: "identity" });
+      return;
+    }
+
+    setSelectedEdit({
+      type: "complex_multiply",
+      real: roundedReal,
+      imaginary: roundedImaginary,
+    });
+  };
 
   return (
     <main className="min-h-screen bg-zinc-950 text-zinc-100">
@@ -578,7 +612,7 @@ export function SpeechWorkbench() {
                         <dl className="grid h-full grid-rows-5">
                           <StatRow
                             label="Edit"
-                            value={selectedPresetLabel}
+                            value={appliedEditLabel}
                             className="h-full py-0"
                           />
                           <StatRow
@@ -752,34 +786,67 @@ export function SpeechWorkbench() {
                   </div>
                 </PanelShell>
 
-                <PanelShell title="Edit controls">
+                <PanelShell
+                  title="Edit controls"
+                  actions={
+                    <label className="flex items-center gap-2 text-xs text-zinc-400">
+                      <span>Show original</span>
+                      <Switch
+                        checked={showOriginalReference}
+                        onCheckedChange={setShowOriginalReference}
+                        disabled={signalMode !== "analysis" || !hasActiveEdit}
+                      />
+                    </label>
+                  }
+                >
                   <div className="space-y-3 rounded-md border border-zinc-800 bg-zinc-950 p-4">
-                    <div className="flex flex-wrap gap-2">
-                      {presets.map((preset) => {
-                        const active = selectedPreset?.id === preset.id;
-                        return (
-                          <Button
-                            key={preset.id}
-                            variant={active ? "secondary" : "outline"}
-                            size="sm"
-                            disabled={signalMode !== "analysis"}
-                            onClick={() => setSelectedEdit(preset.edit)}
-                          >
-                            {preset.label}
-                          </Button>
-                        );
-                      })}
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-zinc-300">Real</span>
+                          <span className="font-medium text-zinc-100">
+                            {draftReal.toFixed(2)}
+                          </span>
+                        </div>
+                        <Slider
+                          min={-5}
+                          max={5}
+                          step={0.1}
+                          value={draftReal}
+                          onValueChange={setDraftReal}
+                          disabled={signalMode !== "analysis"}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-zinc-300">Imaginary</span>
+                          <span className="font-medium text-zinc-100">
+                            {draftImaginary.toFixed(2)}
+                          </span>
+                        </div>
+                        <Slider
+                          min={-5}
+                          max={5}
+                          step={0.1}
+                          value={draftImaginary}
+                          onValueChange={setDraftImaginary}
+                          disabled={signalMode !== "analysis"}
+                        />
+                      </div>
                     </div>
 
                     <div className="flex flex-wrap items-center gap-3">
                       <Button
-                        variant={showOriginalReference ? "secondary" : "outline"}
-                        size="sm"
-                        disabled={signalMode !== "analysis" || !hasActiveEdit}
-                        onClick={() => setShowOriginalReference((current) => !current)}
+                        variant="secondary"
+                        disabled={signalMode !== "analysis" || state.applyingEdit}
+                        onClick={applyTransformation}
                       >
-                        {showOriginalReference ? "Showing original" : "Show original"}
+                        Apply transformation
                       </Button>
+                      <div className="text-sm text-zinc-400">
+                        Applied multiplier: <span className="text-zinc-100">{appliedEditLabel}</span>
+                      </div>
                       {state.applyingEdit && <SpinnerLabel text="Applying spectral edit." />}
                     </div>
                   </div>

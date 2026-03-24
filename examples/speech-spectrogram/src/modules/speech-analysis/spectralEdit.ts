@@ -1,5 +1,4 @@
 import { createComplexArray } from "pragma-dsp/core";
-import { assertNonZero } from "pragma-dsp/fluent";
 import { FluentFFT } from "pragma-dsp/xform/fourier-fluent";
 
 import type { SpectralEditKind } from "./domain";
@@ -26,31 +25,12 @@ export const applySpectralEdit = (
     case "identity":
       return input;
 
-    case "scale": {
-      assertNonZero(edit.factor);
-      const chain = fft.forward(input).scale(edit.factor);
-      return chain.inverseInto(output).real;
-    }
+    case "complex_multiply": {
+      if (edit.real === 1 && edit.imaginary === 0) {
+        return input;
+      }
 
-    case "multiply_by_i": {
-      const chain = fft.forward(input).mulScalar(0, 1);
-      return chain.inverseInto(output).real;
-    }
-
-    case "conjugate": {
-      const chain = fft.forward(input).conj();
-      return chain.inverseInto(output).real;
-    }
-
-    case "negate": {
-      assertNonZero(-1);
-      const chain = fft.forward(input).scale(-1);
-      return chain.inverseInto(output).real;
-    }
-
-    case "scale_and_conjugate": {
-      assertNonZero(edit.factor);
-      const chain = fft.forward(input).scale(edit.factor).conj();
+      const chain = fft.forward(input).mulScalar(edit.real, edit.imaginary);
       return chain.inverseInto(output).real;
     }
   }
