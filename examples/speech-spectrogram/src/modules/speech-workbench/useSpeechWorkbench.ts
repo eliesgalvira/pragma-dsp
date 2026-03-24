@@ -24,6 +24,7 @@ import {
 
 const appLayer = Layer.mergeAll(AudioInput.layer, SpeechAnalysis.layer);
 const appRuntime = ManagedRuntime.make(appLayer);
+const MAX_RECORDING_MS = 60_000;
 
 const formatError = (error: unknown) =>
   error instanceof Error ? error.message : String(error);
@@ -46,6 +47,8 @@ export function useSpeechWorkbench() {
   "use no memo";
 
   const sessionRef = useRef<RecordingSession | null>(null);
+  const autoStopTimeoutRef = useRef<number | null>(null);
+  const recordingStartedAtRef = useRef<number | null>(null);
   const liveAnalysisTokenRef = useRef(0);
   const liveAnalysisInFlightRef = useRef(false);
   const pendingLiveFrameRef = useRef<AudioPreviewFrame | null>(null);
@@ -111,6 +114,8 @@ export function useSpeechWorkbench() {
         phase: current.recorded ? "ready" : "idle",
         error: message,
         microphonePermission: permission ?? current.microphonePermission,
+        autoStopNoticeOpen:
+          current.autoStopNoticeOpen && current.phase !== "recording",
         applyingEdit: false,
       }));
     });
@@ -200,6 +205,7 @@ export function useSpeechWorkbench() {
             ...current,
             phase: "recording",
             microphonePermission: "granted",
+            autoStopNoticeOpen: false,
             editedFor: null,
             live: null,
             recorded: null,
@@ -207,6 +213,7 @@ export function useSpeechWorkbench() {
             edited: null,
           }));
         });
+        recordingStartedAtRef.current = performance.now();
       })
       .catch(handleError);
   }, [analyzeLiveFrame, handleError, runtime]);
@@ -214,6 +221,7 @@ export function useSpeechWorkbench() {
   const reset = useCallback(() => {
     const session = sessionRef.current;
     sessionRef.current = null;
+    recordingStartedAtRef.current = null;
 
     if (session) {
       void runtime.runPromise(session.cancel).catch(handleError);
@@ -230,16 +238,25 @@ export function useSpeechWorkbench() {
     });
   }, [handleError, runtime]);
 
-  const stopRecording = useCallback(() => {
+  const stopRecording = useCallback((options?: { readonly automatic?: boolean }) => {
     const session = sessionRef.current;
     if (!session) {
       return;
     }
 
     sessionRef.current = null;
+    recordingStartedAtRef.current = null;
+    if (autoStopTimeoutRef.current != null) {
+      window.clearTimeout(autoStopTimeoutRef.current);
+      autoStopTimeoutRef.current = null;
+    }
     liveAnalysisTokenRef.current += 1;
     startTransition(() => {
-      setState((current) => ({ ...current, phase: "analyzing" }));
+      setState((current) => ({
+        ...current,
+        phase: "analyzing",
+        autoStopNoticeOpen: options?.automatic ?? false,
+      }));
     });
 
     void runtime
@@ -283,6 +300,35 @@ export function useSpeechWorkbench() {
       };
     });
   }, []);
+
+  const stopRecordingAutomatically = useEffectEvent(() => {
+    stopRecording({ automatic: true });
+  });
+
+  useEffect(() => {
+    if (state.phase !== "recording") {
+      if (autoStopTimeoutRef.current != null) {
+        window.clearTimeout(autoStopTimeoutRef.current);
+        autoStopTimeoutRef.current = null;
+      }
+      return;
+    }
+
+    const startedAt = recordingStartedAtRef.current ?? performance.now();
+    recordingStartedAtRef.current = startedAt;
+    const remainingMs = Math.max(0, MAX_RECORDING_MS - (performance.now() - startedAt));
+
+    autoStopTimeoutRef.current = window.setTimeout(() => {
+      stopRecordingAutomatically();
+    }, remainingMs);
+
+    return () => {
+      if (autoStopTimeoutRef.current != null) {
+        window.clearTimeout(autoStopTimeoutRef.current);
+        autoStopTimeoutRef.current = null;
+      }
+    };
+  }, [state.phase, stopRecordingAutomatically]);
 
   useEffect(() => {
     if (state.phase !== "ready" || !state.recorded) {
@@ -396,6 +442,11 @@ export function useSpeechWorkbench() {
 
   useEffect(() => {
     return () => {
+      if (autoStopTimeoutRef.current != null) {
+        window.clearTimeout(autoStopTimeoutRef.current);
+        autoStopTimeoutRef.current = null;
+      }
+      recordingStartedAtRef.current = null;
       const session = sessionRef.current;
       sessionRef.current = null;
 
@@ -405,6 +456,12 @@ export function useSpeechWorkbench() {
     };
   }, [runtime]);
 
+  const dismissAutoStopNotice = useCallback(() => {
+    startTransition(() => {
+      setState((current) => ({ ...current, autoStopNoticeOpen: false }));
+    });
+  }, []);
+
   return {
     state,
     presets: SPECTRAL_EDIT_PRESETS,
@@ -412,5 +469,6 @@ export function useSpeechWorkbench() {
     stopRecording,
     reset,
     setSelectedEdit,
+    dismissAutoStopNotice,
   };
 }

@@ -172,6 +172,42 @@ function PermissionPrompt() {
   );
 }
 
+function AutoStopNotice({
+  open,
+  onClose,
+}: {
+  readonly open: boolean;
+  readonly onClose: () => void;
+}) {
+  if (!open) {
+    return null;
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6">
+      <div className="w-full max-w-md rounded-lg border border-zinc-800 bg-zinc-950 p-6 shadow-lg">
+        <div className="space-y-2">
+          <p className="text-base font-medium text-zinc-100">
+            Recording stopped automatically
+          </p>
+          <p className="text-sm text-zinc-400">
+            The recording reached the 60 second limit and was stopped automatically.
+          </p>
+          <p className="text-sm text-zinc-500">
+            Processing has already started, so you can review the result as soon as it
+            finishes.
+          </p>
+        </div>
+        <div className="mt-5 flex justify-end">
+          <Button variant="secondary" onClick={onClose}>
+            Continue
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const rms = (samples: Float32Array) => {
   if (samples.length === 0) {
     return 0;
@@ -239,6 +275,7 @@ export function SpeechWorkbench() {
     stopRecording,
     reset,
     setSelectedEdit,
+    dismissAutoStopNotice,
   } = useSpeechWorkbench();
   const [showOriginalReference, setShowOriginalReference] = useState(false);
   const [showFormants, setShowFormants] = useState(true);
@@ -319,6 +356,10 @@ export function SpeechWorkbench() {
   return (
     <main className="min-h-screen bg-zinc-950 text-zinc-100">
       {waitingForPermission && <PermissionPrompt />}
+      <AutoStopNotice
+        open={state.autoStopNoticeOpen}
+        onClose={dismissAutoStopNotice}
+      />
 
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-6">
         <header className="border-b border-zinc-800 pb-4">
@@ -386,7 +427,7 @@ export function SpeechWorkbench() {
                   {state.phase === "recording" && (
                     <Button
                       variant="destructive"
-                      onClick={stopRecording}
+                      onClick={() => stopRecording()}
                       className="min-w-[168px]"
                     >
                       <Square className="size-4" />
