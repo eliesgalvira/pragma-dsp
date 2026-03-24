@@ -8,7 +8,7 @@ import {
 } from "react";
 import { Effect, Layer, ManagedRuntime } from "effect";
 
-import { AudioInput, AudioOutput, type AudioPreviewFrame, type AudioSamples, type RecordingSession } from "../audio";
+import { AudioInput, AudioOutput, type AudioPreviewFrame, type RecordingSession } from "../audio";
 import {
   DEFAULT_ANALYSIS_CONFIG,
   SPECTRAL_EDIT_PRESETS,
@@ -111,36 +111,6 @@ export function useSpeechWorkbench() {
         applyingEdit: false,
       }));
     });
-  });
-
-  const applyEdit = useEffectEvent((audio: AudioSamples, edit: SpectralEditKind) => {
-    startTransition(() => {
-      setState((current) => {
-        if (current.recorded !== audio) {
-          return current;
-        }
-        return { ...current, applyingEdit: true };
-      });
-    });
-
-    void runtime
-      .runPromise(
-        Effect.gen(function* () {
-          const analysis = yield* SpeechAnalysis;
-          return yield* analysis.applyEdit(audio, edit, DEFAULT_ANALYSIS_CONFIG);
-        }),
-      )
-      .then((edited) => {
-        startTransition(() => {
-          setState((current) => {
-            if (current.recorded !== audio) {
-              return current;
-            }
-            return { ...current, edited, applyingEdit: false };
-          });
-        });
-      })
-      .catch(handleError);
   });
 
   const analyzeLiveFrame = useEffectEvent((frame: AudioPreviewFrame) => {
@@ -277,8 +247,16 @@ export function useSpeechWorkbench() {
   }, [handleError, runtime, state.selectedEdit]);
 
   const setSelectedEdit = useCallback((edit: SpectralEditKind) => {
-    startTransition(() => {
-      setState((current) => ({ ...current, selectedEdit: edit }));
+    setState((current) => {
+      if (current.selectedEdit === edit) {
+        return current;
+      }
+
+      return {
+        ...current,
+        selectedEdit: edit,
+        applyingEdit: current.phase === "ready" && current.recorded !== null,
+      };
     });
   }, []);
 
@@ -287,8 +265,41 @@ export function useSpeechWorkbench() {
       return;
     }
 
-    applyEdit(state.recorded, state.selectedEdit);
-  }, [applyEdit, state.phase, state.recorded, state.selectedEdit]);
+    const audio = state.recorded;
+    const edit = state.selectedEdit;
+    let cancelled = false;
+
+    void runtime
+      .runPromise(
+        Effect.gen(function* () {
+          const analysis = yield* SpeechAnalysis;
+          return yield* analysis.applyEdit(audio, edit, DEFAULT_ANALYSIS_CONFIG);
+        }),
+      )
+      .then((edited) => {
+        if (cancelled) {
+          return;
+        }
+
+        startTransition(() => {
+          setState((current) => {
+            if (current.recorded !== audio || current.selectedEdit !== edit) {
+              return current;
+            }
+            return { ...current, edited, applyingEdit: false };
+          });
+        });
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          handleError(error);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [handleError, runtime, state.phase, state.recorded, state.selectedEdit]);
 
   const play = useEffectEvent((which: "original" | "edited") => {
     const audio = which === "original" ? state.recorded : state.edited?.audio;

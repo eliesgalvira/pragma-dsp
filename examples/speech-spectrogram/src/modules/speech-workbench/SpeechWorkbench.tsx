@@ -1,11 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import type * as React from "react";
 import {
   Mic,
   RotateCcw,
   Square,
-  Volume2,
-  WandSparkles,
 } from "lucide-react";
 
 import {
@@ -252,8 +250,6 @@ export function SpeechWorkbench() {
     stopRecording,
     reset,
     setSelectedEdit,
-    playOriginal,
-    playEdited,
   } = useSpeechWorkbench();
   const [showOriginalReference, setShowOriginalReference] = useState(false);
 
@@ -275,10 +271,8 @@ export function SpeechWorkbench() {
     state.phase === "starting" ||
     state.phase === "analyzing";
   const hasActiveEdit = state.selectedEdit.type !== "identity";
-  const selectedPresetLabel =
-    presets.find(
-      (preset) => JSON.stringify(preset.edit) === JSON.stringify(state.selectedEdit),
-    )?.label ?? "Unknown";
+  const selectedPreset = presets.find((preset) => preset.edit === state.selectedEdit);
+  const selectedPresetLabel = selectedPreset?.label ?? "Unknown";
   const showEditedSignal =
     Boolean(ready) &&
     hasActiveEdit &&
@@ -295,24 +289,32 @@ export function SpeechWorkbench() {
       : ready
         ? "analysis"
         : "empty";
+  const editLoading =
+    signalMode === "analysis" &&
+    hasActiveEdit &&
+    !showOriginalReference &&
+    state.applyingEdit;
   const valuePanelTitle =
-    signalMode === "analysis" && showEditedSignal ? "Difference values" : "Session values";
+    signalMode === "analysis" && (showEditedSignal || editLoading)
+      ? "Difference values"
+      : "Session values";
   const displayedAudio =
     signalMode === "analysis"
-      ? showEditedSignal && state.edited
+      ? showEditedSignal && !editLoading && state.edited
         ? state.edited.audio
         : state.recorded
       : null;
-  const audioSrc = useMemo(
-    () => (displayedAudio ? toWavDataUrl(displayedAudio) : null),
-    [displayedAudio],
-  );
+  const [audioSrc, setAudioSrc] = useState<string | null>(null);
 
   useEffect(() => {
     if (!hasActiveEdit && showOriginalReference) {
       setShowOriginalReference(false);
     }
   }, [hasActiveEdit, showOriginalReference]);
+
+  useEffect(() => {
+    setAudioSrc(displayedAudio ? toWavDataUrl(displayedAudio) : null);
+  }, [displayedAudio]);
 
   return (
     <main className="min-h-screen bg-zinc-950 text-zinc-100">
@@ -396,39 +398,6 @@ export function SpeechWorkbench() {
                         <RotateCcw className="size-4" />
                         Reset
                       </Button>
-
-                      <Button
-                        variant="outline"
-                        onClick={playOriginal}
-                        disabled={!ready || state.playing !== null}
-                      >
-                        {state.playing === "original" ? (
-                          <InlineSpinner />
-                        ) : (
-                          <Volume2 className="size-4" />
-                        )}
-                        Play original
-                      </Button>
-
-                      {hasActiveEdit && (
-                        <Button
-                          variant="outline"
-                          onClick={playEdited}
-                          disabled={
-                            !ready ||
-                            !state.edited ||
-                            state.playing !== null ||
-                            state.applyingEdit
-                          }
-                        >
-                          {state.playing === "edited" ? (
-                            <InlineSpinner />
-                          ) : (
-                            <WandSparkles className="size-4" />
-                          )}
-                          Play edited
-                        </Button>
-                      )}
                     </>
                   )}
                 </div>
@@ -467,21 +436,25 @@ export function SpeechWorkbench() {
                         className="w-full"
                       />
                     ) : signalMode === "analysis" ? (
-                      <WaveformCanvas
-                        samples={
-                          showEditedSignal
-                            ? state.edited!.audio.samples
-                            : state.recorded!.samples
-                        }
-                        sampleRate={
-                          showEditedSignal
-                            ? state.edited!.audio.sampleRate
-                            : state.recorded!.sampleRate
-                        }
-                        label={showEditedSignal ? "Edited waveform" : "Original waveform"}
-                        color={showEditedSignal ? "#ff9d5c" : "#00d4aa"}
-                        className="w-full"
-                      />
+                      editLoading ? (
+                        <Skeleton className="h-[180px] w-full" />
+                      ) : (
+                        <WaveformCanvas
+                          samples={
+                            showEditedSignal
+                              ? state.edited!.audio.samples
+                              : state.recorded!.samples
+                          }
+                          sampleRate={
+                            showEditedSignal
+                              ? state.edited!.audio.sampleRate
+                              : state.recorded!.sampleRate
+                          }
+                          label={showEditedSignal ? "Edited waveform" : "Original waveform"}
+                          color={showEditedSignal ? "#ff9d5c" : "#00d4aa"}
+                          className="w-full"
+                        />
+                      )
                     ) : (
                       <EmptyChart
                         label={liveEmptyLabel}
@@ -550,6 +523,14 @@ export function SpeechWorkbench() {
                             className="h-full py-0"
                           />
                         </dl>
+                      ) : signalMode === "analysis" && editLoading ? (
+                        <div className="space-y-3">
+                          <Skeleton className="h-4 w-24" />
+                          <Skeleton className="h-4 w-36" />
+                          <Skeleton className="h-4 w-28" />
+                          <Skeleton className="h-4 w-32" />
+                          <Skeleton className="h-4 w-40" />
+                        </div>
                       ) : signalMode === "analysis" && showEditedSignal && state.edited ? (
                         <dl className="grid h-full grid-rows-5">
                           <StatRow
@@ -653,25 +634,29 @@ export function SpeechWorkbench() {
                       className="w-full"
                     />
                   ) : signalMode === "analysis" ? (
-                    <SpectrogramCanvas
-                      stft={
-                        showEditedSignal
-                          ? state.edited!.analysis.stft
-                          : state.analysis!.stft
-                      }
-                      pitchTrack={
-                        showEditedSignal
-                          ? state.edited!.analysis.pitchTrack
-                          : state.analysis!.pitchTrack
-                      }
-                      formants={
-                        showEditedSignal
-                          ? state.edited!.analysis.formants
-                          : state.analysis!.formants
-                      }
-                      maxFreqDisplay={Math.min(state.recorded!.sampleRate / 2, 8000)}
-                      className="w-full"
-                    />
+                    editLoading ? (
+                      <Skeleton className="h-[320px] w-full" />
+                    ) : (
+                      <SpectrogramCanvas
+                        stft={
+                          showEditedSignal
+                            ? state.edited!.analysis.stft
+                            : state.analysis!.stft
+                        }
+                        pitchTrack={
+                          showEditedSignal
+                            ? state.edited!.analysis.pitchTrack
+                            : state.analysis!.pitchTrack
+                        }
+                        formants={
+                          showEditedSignal
+                            ? state.edited!.analysis.formants
+                            : state.analysis!.formants
+                        }
+                        maxFreqDisplay={Math.min(state.recorded!.sampleRate / 2, 8000)}
+                        className="w-full"
+                      />
+                    )
                   ) : (
                     <EmptyChart
                       label={liveEmptyLabel}
@@ -684,28 +669,33 @@ export function SpeechWorkbench() {
                 <PanelShell title="Audio">
                   <div className="rounded-md border border-zinc-800 bg-zinc-950 p-4">
                     {signalMode === "busy" ? (
-                      <div className="space-y-3">
+                      <div className="flex h-[40px] items-center">
                         <Skeleton className="h-9 w-full" />
+                      </div>
+                    ) : editLoading ? (
+                      <div className="flex h-[40px] items-center">
                         <Skeleton className="h-9 w-full" />
                       </div>
                     ) : audioSrc ? (
-                      <AudioPlayer className="w-full">
-                        <AudioPlayerElement
-                          key={audioSrc}
-                          src={audioSrc}
-                          preload="metadata"
-                        />
-                        <AudioPlayerControlBar className="flex w-full flex-wrap items-center gap-2">
-                          <AudioPlayerPlayButton />
-                          <AudioPlayerSeekBackwardButton />
-                          <AudioPlayerSeekForwardButton />
-                          <AudioPlayerTimeDisplay showDuration={false} />
-                          <AudioPlayerTimeRange className="min-w-[160px] flex-1" />
-                          <AudioPlayerDurationDisplay />
-                          <AudioPlayerMuteButton />
-                          <AudioPlayerVolumeRange className="w-20" />
-                        </AudioPlayerControlBar>
-                      </AudioPlayer>
+                      <div className="flex h-[40px] items-center">
+                        <AudioPlayer className="w-full">
+                          <AudioPlayerElement
+                            key={audioSrc}
+                            src={audioSrc}
+                            preload="metadata"
+                          />
+                          <AudioPlayerControlBar className="flex w-full flex-wrap items-center gap-2">
+                            <AudioPlayerPlayButton />
+                            <AudioPlayerSeekBackwardButton />
+                            <AudioPlayerSeekForwardButton />
+                            <AudioPlayerTimeDisplay showDuration={false} />
+                            <AudioPlayerTimeRange className="min-w-[160px] flex-1" />
+                            <AudioPlayerDurationDisplay />
+                            <AudioPlayerMuteButton />
+                            <AudioPlayerVolumeRange className="w-20" />
+                          </AudioPlayerControlBar>
+                        </AudioPlayer>
+                      </div>
                     ) : (
                       <div className="flex min-h-20 items-center justify-center text-center">
                         <div className="space-y-1">
@@ -723,12 +713,10 @@ export function SpeechWorkbench() {
                   <div className="space-y-3 rounded-md border border-zinc-800 bg-zinc-950 p-4">
                     <div className="flex flex-wrap gap-2">
                       {presets.map((preset) => {
-                        const active =
-                          JSON.stringify(preset.edit) ===
-                          JSON.stringify(state.selectedEdit);
+                        const active = selectedPreset?.id === preset.id;
                         return (
                           <Button
-                            key={preset.label}
+                            key={preset.id}
                             variant={active ? "secondary" : "outline"}
                             size="sm"
                             disabled={signalMode !== "analysis"}
