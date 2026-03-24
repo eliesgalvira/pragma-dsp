@@ -1,6 +1,5 @@
 import type * as React from "react";
 import {
-  AlertTriangle,
   LoaderCircle,
   Mic,
   RotateCcw,
@@ -9,11 +8,7 @@ import {
   WandSparkles,
 } from "lucide-react";
 
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-} from "../../components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { Button } from "../../components/ui/button";
 import {
   Card,
@@ -40,12 +35,19 @@ function SpinnerLabel({ text }: { readonly text: string }) {
 function StatRow({
   label,
   value,
+  className,
 }: {
   readonly label: string;
   readonly value: string;
+  readonly className?: string;
 }) {
   return (
-    <div className="flex items-center justify-between border-b border-zinc-800 py-2 last:border-b-0">
+    <div
+      className={cn(
+        "flex items-center justify-between border-b border-zinc-800 py-2 last:border-b-0",
+        className,
+      )}
+    >
       <dt className="text-sm text-zinc-400">{label}</dt>
       <dd className="text-right text-sm font-medium text-zinc-100">{value}</dd>
     </div>
@@ -72,12 +74,11 @@ function CanvasShell({
 function AnalysisSkeleton() {
   return (
     <div className="space-y-4">
-      <div className="grid gap-3 md:grid-cols-2">
-        <Skeleton className="h-24 w-full" />
-        <Skeleton className="h-24 w-full" />
+      <div className="grid gap-4 md:grid-cols-2">
+        <Skeleton className="h-[180px] w-full" />
+        <Skeleton className="h-[180px] w-full" />
       </div>
-      <Skeleton className="h-[220px] w-full" />
-      <Skeleton className="h-[300px] w-full" />
+      <Skeleton className="h-[320px] w-full" />
     </div>
   );
 }
@@ -85,12 +86,17 @@ function AnalysisSkeleton() {
 function EmptyChart({
   label,
   detail,
+  height,
 }: {
   readonly label: string;
   readonly detail?: string;
+  readonly height: number;
 }) {
   return (
-    <div className="flex h-[220px] items-center justify-center rounded-md border border-dashed border-zinc-800 bg-zinc-950 px-6 text-center">
+    <div
+      className="flex items-center justify-center rounded-md border border-dashed border-zinc-800 bg-zinc-950 px-6 text-center"
+      style={{ height }}
+    >
       <div className="space-y-1">
         <p className="text-sm font-medium text-zinc-200">{label}</p>
         {detail ? <p className="text-sm text-zinc-500">{detail}</p> : null}
@@ -99,18 +105,41 @@ function EmptyChart({
   );
 }
 
+function FixedStatPanel({
+  children,
+}: {
+  readonly children: React.ReactNode;
+}) {
+  return (
+    <div
+      className="rounded-md border border-zinc-800 bg-zinc-950 p-4"
+      style={{ height: 180 }}
+    >
+      {children}
+    </div>
+  );
+}
+
 function PermissionPrompt() {
   return (
-    <div className="flex h-[220px] items-center justify-center rounded-md border border-zinc-800 bg-zinc-950 px-6">
-      <div className="max-w-md text-center">
-        <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-full bg-zinc-800">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6">
+      <div className="w-full max-w-md rounded-lg border border-zinc-800 bg-zinc-950 p-6 shadow-lg">
+        <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-full bg-zinc-900">
           <Mic className="size-5 text-zinc-100" />
         </div>
-        <p className="text-base font-medium text-zinc-100">Waiting for permissions</p>
-        <p className="mt-2 text-sm text-zinc-400">
+        <p className="text-center text-base font-medium text-zinc-100">
+          Waiting for permissions
+        </p>
+        <p className="mt-2 text-center text-sm text-zinc-400">
           Grant site access to the microphone so it can record and calculate the
           fourier transform in real time.
         </p>
+        <p className="mt-2 text-center text-sm text-zinc-500">
+          All signal processing happens on your machine.
+        </p>
+        <div className="mt-4 flex items-center justify-center">
+          <LoaderCircle className="size-5 animate-spin text-zinc-400" />
+        </div>
       </div>
     </div>
   );
@@ -132,21 +161,28 @@ export function SpeechWorkbench() {
   const ready = state.phase === "ready" && state.recorded && state.analysis;
   const hasRecording = state.recorded !== null;
   const busy = state.phase === "starting" || state.phase === "analyzing";
-  const showPermissionWarning =
-    state.microphonePermission === "prompt" ||
-    state.microphonePermission === "requesting" ||
-    state.microphonePermission === "denied";
-  const permissionWarningTitle =
-    state.microphonePermission === "denied"
-      ? "Microphone access is blocked"
-      : "Give the site permission to access the microphone";
-  const permissionWarningBody =
-    state.microphonePermission === "denied"
-      ? "Enable microphone access in the browser and try recording again. All signal processing happens on your machine."
-      : "All signal processing happens on your machine.";
+  const liveEmptyLabel =
+    state.phase === "recording" ? "Recording is in progress" : "No active recording";
+  const liveEmptyDetail =
+    state.phase === "recording"
+      ? "Waiting for the first microphone frames to populate the live monitor."
+      : "Start a recording to show the live signal and spectrogram.";
+  const analysisEmptyLabel =
+    state.phase === "recording" ? "Recording is in progress" : "No recording";
+  const analysisEmptyDetail =
+    state.phase === "recording"
+      ? "Final waveform and spectrogram appear after you stop recording."
+      : "Record audio to populate the analysis panels.";
+  const showPrimaryRecordButton =
+    state.phase === "idle" ||
+    state.phase === "ready" ||
+    state.phase === "starting" ||
+    state.phase === "analyzing";
 
   return (
     <main className="min-h-screen bg-zinc-950 text-zinc-100">
+      {state.phase === "starting" && <PermissionPrompt />}
+
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-6">
         <header className="border-b border-zinc-800 pb-4">
           <h1 className="text-2xl font-semibold tracking-tight text-zinc-100">
@@ -167,13 +203,6 @@ export function SpeechWorkbench() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {showPermissionWarning && (
-                  <Alert variant="warning">
-                    <AlertTitle>{permissionWarningTitle}</AlertTitle>
-                    <AlertDescription>{permissionWarningBody}</AlertDescription>
-                  </Alert>
-                )}
-
                 {state.microphonePermission === "unsupported" && (
                   <Alert variant="destructive">
                     <AlertTitle>Microphone recording is not supported</AlertTitle>
@@ -185,14 +214,28 @@ export function SpeechWorkbench() {
                 )}
 
                 <div className="flex flex-wrap items-center gap-3">
-                  {(state.phase === "idle" || state.phase === "ready") && (
-                    <Button onClick={startRecording} disabled={busy}>
-                      {busy ? (
-                        <LoaderCircle className="size-4 animate-spin" />
+                  {showPrimaryRecordButton && (
+                    <Button
+                      onClick={startRecording}
+                      disabled={state.phase === "starting" || state.phase === "analyzing"}
+                      variant={state.phase === "analyzing" ? "secondary" : "default"}
+                    >
+                      {state.phase === "starting" ? (
+                        <>
+                          <LoaderCircle className="size-4 animate-spin" />
+                          Waiting for permissions
+                        </>
+                      ) : state.phase === "analyzing" ? (
+                        <>
+                          <LoaderCircle className="size-4 animate-spin" />
+                          Decoding and computing…
+                        </>
                       ) : (
-                        <Mic className="size-4" />
+                        <>
+                          <Mic className="size-4" />
+                          Start recording
+                        </>
                       )}
-                      Start recording
                     </Button>
                   )}
 
@@ -270,17 +313,36 @@ export function SpeechWorkbench() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-5">
-                {state.phase === "starting" ? (
-                  <PermissionPrompt />
-                ) : !state.live || !liveAnalysis ? (
+                {!state.live || !liveAnalysis ? (
                   <>
-                    <CanvasShell title="Waveform">
-                      <EmptyChart label="No recording" detail="Start a recording to show the live signal." />
-                    </CanvasShell>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <CanvasShell title="Waveform">
+                        <EmptyChart
+                          label={liveEmptyLabel}
+                          detail={liveEmptyDetail}
+                          height={180}
+                        />
+                      </CanvasShell>
+
+                      <FixedStatPanel>
+                        <div className="flex h-full items-center justify-center text-center">
+                          <div className="space-y-1">
+                            <p className="text-sm font-medium text-zinc-200">
+                              {liveEmptyLabel}
+                            </p>
+                            <p className="text-sm text-zinc-500">
+                              Session values appear after the live stream starts.
+                            </p>
+                          </div>
+                        </div>
+                      </FixedStatPanel>
+                    </div>
+
                     <CanvasShell title="Spectrogram">
                       <EmptyChart
-                        label="No recording"
+                        label={liveEmptyLabel}
                         detail="The live spectrogram appears while microphone capture is active."
+                        height={320}
                       />
                     </CanvasShell>
                   </>
@@ -298,19 +360,22 @@ export function SpeechWorkbench() {
                         />
                       </CanvasShell>
 
-                      <div className="rounded-md border border-zinc-800 bg-zinc-950 p-4">
-                        <dl>
+                      <FixedStatPanel>
+                        <dl className="grid h-full grid-rows-5">
                           <StatRow
                             label="Window"
                             value={`${(state.live.frame.elapsedMs / 1000).toFixed(1)} s`}
+                            className="h-full py-0"
                           />
                           <StatRow
                             label="Input level"
                             value={`${(state.live.frame.level * 100).toFixed(1)} %`}
+                            className="h-full py-0"
                           />
                           <StatRow
                             label="Session peak"
                             value={`${(state.live.frame.peakAmplitude * 100).toFixed(1)} %`}
+                            className="h-full py-0"
                           />
                           <StatRow
                             label="Pitch"
@@ -319,6 +384,7 @@ export function SpeechWorkbench() {
                                 ? `${liveAnalysis.medianF0.toFixed(1)} Hz`
                                 : "Unvoiced"
                             }
+                            className="h-full py-0"
                           />
                           <StatRow
                             label="Formants"
@@ -329,9 +395,10 @@ export function SpeechWorkbench() {
                                     .join(" / ")
                                 : "Tracking"
                             }
+                            className="h-full py-0"
                           />
                         </dl>
-                      </div>
+                      </FixedStatPanel>
                     </div>
 
                     <CanvasShell title="Spectrogram">
@@ -361,10 +428,18 @@ export function SpeechWorkbench() {
                 ) : !ready ? (
                   <div className="space-y-5">
                     <CanvasShell title="Waveform">
-                      <EmptyChart label="No recording" />
+                      <EmptyChart
+                        label={analysisEmptyLabel}
+                        detail={analysisEmptyDetail}
+                        height={180}
+                      />
                     </CanvasShell>
                     <CanvasShell title="Spectrogram">
-                      <EmptyChart label="No recording" />
+                      <EmptyChart
+                        label={analysisEmptyLabel}
+                        detail={analysisEmptyDetail}
+                        height={320}
+                      />
                     </CanvasShell>
                   </div>
                 ) : (
@@ -376,7 +451,7 @@ export function SpeechWorkbench() {
 
                     <TabsContent value="original" className="space-y-5">
                       <div className="grid gap-4 md:grid-cols-2">
-                        <div className="rounded-md border border-zinc-800 bg-zinc-950 p-4">
+                        <FixedStatPanel>
                           <dl>
                             <StatRow
                               label="Duration"
@@ -407,7 +482,7 @@ export function SpeechWorkbench() {
                               }
                             />
                           </dl>
-                        </div>
+                        </FixedStatPanel>
 
                         <CanvasShell title="Waveform">
                           <WaveformCanvas
@@ -522,6 +597,10 @@ export function SpeechWorkbench() {
                     <Skeleton className="h-4 w-36" />
                     <Skeleton className="h-4 w-28" />
                   </div>
+                ) : state.phase === "recording" ? (
+                  <div className="rounded-md border border-dashed border-zinc-800 px-4 py-8 text-center text-sm text-zinc-400">
+                    Recording is in progress
+                  </div>
                 ) : !ready ? (
                   <div className="rounded-md border border-dashed border-zinc-800 px-4 py-8 text-center text-sm text-zinc-400">
                     No recording
@@ -557,50 +636,6 @@ export function SpeechWorkbench() {
                       }
                     />
                   </dl>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-4">
-                <CardTitle>Processing</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm text-zinc-400">
-                <div className="flex items-center gap-2">
-                  <span
-                    className={cn(
-                      "size-2 rounded-full bg-zinc-700",
-                      state.phase === "recording" && "bg-emerald-500",
-                    )}
-                  />
-                  Live monitor
-                </div>
-                <div className="flex items-center gap-2">
-                  <span
-                    className={cn(
-                      "size-2 rounded-full bg-zinc-700",
-                      state.phase === "analyzing" && "bg-amber-500",
-                    )}
-                  />
-                  Full analysis
-                </div>
-                <div className="flex items-center gap-2">
-                  <span
-                    className={cn(
-                      "size-2 rounded-full bg-zinc-700",
-                      state.applyingEdit && "bg-amber-500",
-                    )}
-                  />
-                  Spectral edit
-                </div>
-                {(state.microphonePermission === "denied" ||
-                  state.microphonePermission === "unsupported") && (
-                  <div className="flex items-start gap-2 border-t border-zinc-800 pt-3 text-amber-200">
-                    <AlertTriangle className="mt-0.5 size-4 shrink-0" />
-                    <span>
-                      Recording is currently unavailable until microphone access is restored.
-                    </span>
-                  </div>
                 )}
               </CardContent>
             </Card>

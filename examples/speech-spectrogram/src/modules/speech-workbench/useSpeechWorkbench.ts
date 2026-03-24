@@ -135,10 +135,6 @@ export function useSpeechWorkbench() {
         applyingEdit: false,
         microphonePermission:
           current.microphonePermission === "granted" ? "granted" : "requesting",
-        live: null,
-        recorded: null,
-        analysis: null,
-        edited: null,
       }));
     });
 
@@ -162,6 +158,10 @@ export function useSpeechWorkbench() {
             ...current,
             phase: "recording",
             microphonePermission: "granted",
+            live: null,
+            recorded: null,
+            analysis: null,
+            edited: null,
           }));
         });
       })
