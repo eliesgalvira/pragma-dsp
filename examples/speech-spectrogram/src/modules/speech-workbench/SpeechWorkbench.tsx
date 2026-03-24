@@ -1,6 +1,5 @@
 import type * as React from "react";
 import {
-  LoaderCircle,
   Mic,
   RotateCcw,
   Square,
@@ -23,10 +22,26 @@ import { cn } from "../../lib/utils";
 import { SpectrogramCanvas, WaveformCanvas } from "../signal-views";
 import { useSpeechWorkbench } from "./useSpeechWorkbench";
 
+function InlineSpinner({
+  className,
+}: {
+  readonly className?: string;
+}) {
+  return (
+    <span
+      aria-hidden="true"
+      className={cn(
+        "inline-block size-4 animate-spin rounded-full border-2 border-current border-t-transparent",
+        className,
+      )}
+    />
+  );
+}
+
 function SpinnerLabel({ text }: { readonly text: string }) {
   return (
     <div className="flex items-center gap-2 text-sm text-zinc-400">
-      <LoaderCircle className="size-4 animate-spin" />
+      <InlineSpinner />
       <span>{text}</span>
     </div>
   );
@@ -67,6 +82,21 @@ function CanvasShell({
       <div className="overflow-hidden rounded-md border border-zinc-800 bg-black">
         {children}
       </div>
+    </div>
+  );
+}
+
+function PanelShell({
+  title,
+  children,
+}: {
+  readonly title: string;
+  readonly children: React.ReactNode;
+}) {
+  return (
+    <div className="space-y-3">
+      <h3 className="text-sm font-medium text-zinc-200">{title}</h3>
+      {children}
     </div>
   );
 }
@@ -138,7 +168,7 @@ function PermissionPrompt() {
           All signal processing happens on your machine.
         </p>
         <div className="mt-4 flex items-center justify-center">
-          <LoaderCircle className="size-5 animate-spin text-zinc-400" />
+          <InlineSpinner className="size-5 text-zinc-400" />
         </div>
       </div>
     </div>
@@ -161,6 +191,8 @@ export function SpeechWorkbench() {
   const ready = state.phase === "ready" && state.recorded && state.analysis;
   const hasRecording = state.recorded !== null;
   const busy = state.phase === "starting" || state.phase === "analyzing";
+  const waitingForPermission =
+    state.phase === "starting" && state.microphonePermission === "requesting";
   const liveEmptyLabel =
     state.phase === "recording" ? "Recording is in progress" : "No active recording";
   const liveEmptyDetail =
@@ -181,7 +213,7 @@ export function SpeechWorkbench() {
 
   return (
     <main className="min-h-screen bg-zinc-950 text-zinc-100">
-      {state.phase === "starting" && <PermissionPrompt />}
+      {waitingForPermission && <PermissionPrompt />}
 
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-6">
         <header className="border-b border-zinc-800 pb-4">
@@ -219,16 +251,21 @@ export function SpeechWorkbench() {
                       onClick={startRecording}
                       disabled={state.phase === "starting" || state.phase === "analyzing"}
                       variant={state.phase === "analyzing" ? "secondary" : "default"}
+                      className={
+                        state.phase === "analyzing"
+                          ? "min-w-[168px] bg-sky-900 text-sky-50 hover:bg-sky-900"
+                          : "min-w-[168px]"
+                      }
                     >
                       {state.phase === "starting" ? (
                         <>
-                          <LoaderCircle className="size-4 animate-spin" />
-                          Waiting for permissions
+                          <InlineSpinner />
+                          {waitingForPermission ? "Waiting for permissions" : "Start recording"}
                         </>
                       ) : state.phase === "analyzing" ? (
                         <>
-                          <LoaderCircle className="size-4 animate-spin" />
-                          Decoding and computing…
+                          <InlineSpinner />
+                          Processing
                         </>
                       ) : (
                         <>
@@ -240,7 +277,11 @@ export function SpeechWorkbench() {
                   )}
 
                   {state.phase === "recording" && (
-                    <Button variant="destructive" onClick={stopRecording}>
+                    <Button
+                      variant="destructive"
+                      onClick={stopRecording}
+                      className="min-w-[168px]"
+                    >
                       <Square className="size-4" />
                       Stop recording
                     </Button>
@@ -259,7 +300,7 @@ export function SpeechWorkbench() {
                         disabled={!ready || state.playing !== null}
                       >
                         {state.playing === "original" ? (
-                          <LoaderCircle className="size-4 animate-spin" />
+                          <InlineSpinner />
                         ) : (
                           <Volume2 className="size-4" />
                         )}
@@ -277,7 +318,7 @@ export function SpeechWorkbench() {
                         }
                       >
                         {state.playing === "edited" ? (
-                          <LoaderCircle className="size-4 animate-spin" />
+                          <InlineSpinner />
                         ) : (
                           <WandSparkles className="size-4" />
                         )}
@@ -285,15 +326,6 @@ export function SpeechWorkbench() {
                       </Button>
                     </>
                   )}
-                </div>
-
-                <div className="text-sm text-zinc-400">
-                  {state.phase === "starting" && "Requesting microphone access."}
-                  {state.phase === "recording" && "Recording in progress."}
-                  {state.phase === "analyzing" &&
-                    "Decoding audio and computing the full analysis."}
-                  {state.phase === "ready" && "Recording ready."}
-                  {state.phase === "idle" && "No active recording."}
                 </div>
 
                 {state.error && (
@@ -324,18 +356,20 @@ export function SpeechWorkbench() {
                         />
                       </CanvasShell>
 
-                      <FixedStatPanel>
-                        <div className="flex h-full items-center justify-center text-center">
-                          <div className="space-y-1">
-                            <p className="text-sm font-medium text-zinc-200">
-                              {liveEmptyLabel}
-                            </p>
-                            <p className="text-sm text-zinc-500">
-                              Session values appear after the live stream starts.
-                            </p>
+                      <PanelShell title="Session values">
+                        <FixedStatPanel>
+                          <div className="flex h-full items-center justify-center text-center">
+                            <div className="space-y-1">
+                              <p className="text-sm font-medium text-zinc-200">
+                                {liveEmptyLabel}
+                              </p>
+                              <p className="text-sm text-zinc-500">
+                                Session values appear after the live stream starts.
+                              </p>
+                            </div>
                           </div>
-                        </div>
-                      </FixedStatPanel>
+                        </FixedStatPanel>
+                      </PanelShell>
                     </div>
 
                     <CanvasShell title="Spectrogram">
@@ -360,45 +394,47 @@ export function SpeechWorkbench() {
                         />
                       </CanvasShell>
 
-                      <FixedStatPanel>
-                        <dl className="grid h-full grid-rows-5">
-                          <StatRow
-                            label="Window"
-                            value={`${(state.live.frame.elapsedMs / 1000).toFixed(1)} s`}
-                            className="h-full py-0"
-                          />
-                          <StatRow
-                            label="Input level"
-                            value={`${(state.live.frame.level * 100).toFixed(1)} %`}
-                            className="h-full py-0"
-                          />
-                          <StatRow
-                            label="Session peak"
-                            value={`${(state.live.frame.peakAmplitude * 100).toFixed(1)} %`}
-                            className="h-full py-0"
-                          />
-                          <StatRow
-                            label="Pitch"
-                            value={
-                              liveAnalysis.medianF0
-                                ? `${liveAnalysis.medianF0.toFixed(1)} Hz`
-                                : "Unvoiced"
-                            }
-                            className="h-full py-0"
-                          />
-                          <StatRow
-                            label="Formants"
-                            value={
-                              liveAnalysis.formantMedians.length > 0
-                                ? liveAnalysis.formantMedians
-                                    .map((value) => Math.round(value))
-                                    .join(" / ")
-                                : "Tracking"
-                            }
-                            className="h-full py-0"
-                          />
-                        </dl>
-                      </FixedStatPanel>
+                      <PanelShell title="Session values">
+                        <FixedStatPanel>
+                          <dl className="grid h-full grid-rows-5">
+                            <StatRow
+                              label="Window"
+                              value={`${(state.live.frame.elapsedMs / 1000).toFixed(1)} s`}
+                              className="h-full py-0"
+                            />
+                            <StatRow
+                              label="Input level"
+                              value={`${(state.live.frame.level * 100).toFixed(1)} %`}
+                              className="h-full py-0"
+                            />
+                            <StatRow
+                              label="Session peak"
+                              value={`${(state.live.frame.peakAmplitude * 100).toFixed(1)} %`}
+                              className="h-full py-0"
+                            />
+                            <StatRow
+                              label="Pitch"
+                              value={
+                                liveAnalysis.medianF0
+                                  ? `${liveAnalysis.medianF0.toFixed(1)} Hz`
+                                  : "Unvoiced"
+                              }
+                              className="h-full py-0"
+                            />
+                            <StatRow
+                              label="Formants"
+                              value={
+                                liveAnalysis.formantMedians.length > 0
+                                  ? liveAnalysis.formantMedians
+                                      .map((value) => Math.round(value))
+                                      .join(" / ")
+                                  : "Tracking"
+                              }
+                              className="h-full py-0"
+                            />
+                          </dl>
+                        </FixedStatPanel>
+                      </PanelShell>
                     </div>
 
                     <CanvasShell title="Spectrogram">

@@ -48,6 +48,56 @@ export function useSpeechWorkbench() {
   const [state, setState] = useState<WorkbenchState>(() => initialWorkbenchState());
   const runtime = appRuntime;
 
+  useEffect(() => {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      startTransition(() => {
+        setState((current) => ({ ...current, microphonePermission: "unsupported" }));
+      });
+      return;
+    }
+
+    if (!navigator.permissions?.query) {
+      return;
+    }
+
+    let active = true;
+    let permissionStatus: PermissionStatus | null = null;
+
+    const syncPermission = (permissionState: PermissionState) => {
+      if (!active) {
+        return;
+      }
+
+      startTransition(() => {
+        setState((current) => ({
+          ...current,
+          microphonePermission:
+            permissionState === "granted"
+              ? "granted"
+              : permissionState === "denied"
+                ? "denied"
+                : "prompt",
+        }));
+      });
+    };
+
+    void navigator.permissions
+      .query({ name: "microphone" as PermissionName })
+      .then((status) => {
+        permissionStatus = status;
+        syncPermission(status.state);
+        status.onchange = () => syncPermission(status.state);
+      })
+      .catch(() => undefined);
+
+    return () => {
+      active = false;
+      if (permissionStatus) {
+        permissionStatus.onchange = null;
+      }
+    };
+  }, []);
+
   const handleError = useEffectEvent((error: unknown) => {
     const message = formatError(error);
     const permission = permissionFromError(error);
@@ -134,7 +184,9 @@ export function useSpeechWorkbench() {
         playing: null,
         applyingEdit: false,
         microphonePermission:
-          current.microphonePermission === "granted" ? "granted" : "requesting",
+          current.microphonePermission === "prompt"
+            ? "requesting"
+            : current.microphonePermission,
       }));
     });
 
@@ -178,7 +230,10 @@ export function useSpeechWorkbench() {
 
     liveAnalysisTokenRef.current += 1;
     startTransition(() => {
-      setState(initialWorkbenchState());
+      setState((current) => ({
+        ...initialWorkbenchState(),
+        microphonePermission: current.microphonePermission,
+      }));
     });
   }, [handleError, runtime]);
 
