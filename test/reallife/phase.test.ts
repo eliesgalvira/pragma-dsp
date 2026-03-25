@@ -156,7 +156,7 @@ describe("phase accuracy", () => {
       const ph = phase(result);
 
       // atan2(0, negative) = π
-      expect(Math.abs(ph[0])).toBeCloseTo(Math.PI, 10);
+      expect(Math.abs(ph[0]!)).toBeCloseTo(Math.PI, 10);
     });
   });
 });
