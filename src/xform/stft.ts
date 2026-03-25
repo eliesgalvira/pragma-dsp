@@ -54,6 +54,16 @@ export type StftResult = {
   inverse: (options?: { outputLength?: number }) => Float64Array;
 };
 
+export type SpectrogramResult = {
+  readonly stft: StftResult;
+  readonly dbFrames: ReadonlyArray<Float64Array>;
+  readonly floorDb: number;
+};
+
+export type SpectrogramOptions = StftOptions & {
+  readonly floorDb?: number;
+};
+
 export type IstftOptions = {
   fftSize: number;
   hopSize: number;
@@ -148,8 +158,8 @@ export const istft = (
       const idx = start + i;
       if (idx >= output.length) break;
       const w = windowArray[i] ?? 0;
-      output[idx] += (time.real[i] ?? 0) * w;
-      denom[idx] += w * w;
+      output[idx] = (output[idx] ?? 0) + (time.real[i] ?? 0) * w;
+      denom[idx] = (denom[idx] ?? 0) + w * w;
     }
   }
 
@@ -254,13 +264,65 @@ export const stft = (
     complexSides,
     window,
     inverse: (opts = {}) =>
-      istft(frames, {
-        fftSize,
-        hopSize,
-        window,
-        complexSides,
-        outputLength: opts.outputLength,
-      }),
+      istft(
+        frames,
+        opts.outputLength === undefined
+          ? {
+              fftSize,
+              hopSize,
+              window,
+              complexSides,
+            }
+          : {
+              fftSize,
+              hopSize,
+              window,
+              complexSides,
+              outputLength: opts.outputLength,
+            }
+      ),
   };
   return result;
 };
+
+export function spectrogram(
+  signal: ArrayLike<number>,
+  options?: SpectrogramOptions,
+): SpectrogramResult;
+export function spectrogram(
+  signal: StftResult,
+  options?: Pick<SpectrogramOptions, "floorDb">,
+): SpectrogramResult;
+export function spectrogram(
+  signal: ArrayLike<number> | StftResult,
+  options: SpectrogramOptions | Pick<SpectrogramOptions, "floorDb"> = {},
+): SpectrogramResult {
+  const stftResult =
+    "frames" in signal && "frequencies" in signal && "times" in signal
+      ? signal
+      : stft(signal, {
+          fftSize: (options as SpectrogramOptions).fftSize,
+          hopSize: (options as SpectrogramOptions).hopSize,
+          window: (options as SpectrogramOptions).window,
+          sampleRate: (options as SpectrogramOptions).sampleRate,
+          sides: (options as SpectrogramOptions).sides,
+          complexSides: (options as SpectrogramOptions).complexSides,
+        });
+  const floorDb = options.floorDb ?? -80;
+
+  const dbFrames = stftResult.frames.map((frame) => {
+    const values = new Float64Array(frame.magnitudes.length);
+    for (let index = 0; index < frame.magnitudes.length; index++) {
+      const magnitude = frame.magnitudes[index] ?? 0;
+      const db = magnitude > 0 ? 20 * Math.log10(magnitude) : floorDb;
+      values[index] = db < floorDb ? floorDb : db;
+    }
+    return values;
+  });
+
+  return {
+    stft: stftResult,
+    dbFrames,
+    floorDb,
+  };
+}

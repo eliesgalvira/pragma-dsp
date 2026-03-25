@@ -112,6 +112,7 @@
     "gen:refs": "uv run --directory scripts python gen_reallife_refs.py --out ../test/reallife/references/"
   },
   "devDependencies": {
+    "@types/node": "25.5.0",
     "effect": "^3.0.0",
     "mitata": "^1.0.0",
     "tsdown": "^0.20.3",

@@ -343,5 +343,5 @@ export class BenchContext {
 
 declare global {
   var Bun: { gc: (full?: boolean) => void } | undefined;
-  var gc: (() => void) | undefined;
+  var gc: NodeJS.GCFunction | undefined;
 }

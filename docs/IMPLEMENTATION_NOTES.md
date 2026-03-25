@@ -32,6 +32,25 @@ This checklist tracks the v0.1 work described in:
 
 ## Design notes (post v0.1)
 
+## API ladder additions
+
+The library now includes a clearer middle rung for audio-analysis workflows:
+
+- `spectrogram()` in `src/xform/stft.ts`
+  - wraps `stft()` and derives dB frames for visualization code
+  - accepts either raw samples or an existing `StftResult`
+  - keeps visualization-oriented conversion out of app code without forcing a charting library
+- `src/analysis/speech.ts`
+  - `detectPitch()` built on `autocorrelation()`
+  - `detectFormants()` built on `spectralEnvelope()`
+  - `analyzeSpeech()` as the “power rung” for speech-oriented inspection
+
+These APIs intentionally live in subpath modules rather than the root entrypoint:
+
+- they are common and stable for analysis apps
+- they are more opinionated than `spectrum()`
+- they do not belong at the expert rung because callers should not have to restitch them from raw kernels every time
+
 ### One-sided complex STFT (storage-only)
 
 For real-valued time-domain signals, the FFT has conjugate symmetry. We expose an

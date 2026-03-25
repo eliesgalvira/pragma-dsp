@@ -4,20 +4,32 @@
     "target": "ES2022",
     "useDefineForClassFields": true,
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "module": "ESNext",
+    "module": "preserve",
     "types": ["vite/client"],
     "skipLibCheck": true,
+    "incremental": true,
+    "composite": true,
 
     /* Bundler mode */
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
+    "rewriteRelativeImportExtensions": true,
     "moduleDetection": "force",
     "noEmit": true,
     "jsx": "react-jsx",
+    "plugins": [
+      {
+        "name": "@effect/language-service"
+      }
+    ],
 
+    "baseUrl": ".",
     "paths": {
+      "@/*": ["./src/*"],
       "pragma-dsp": ["../../src/index.ts"],
+      "pragma-dsp/analysis": ["../../src/analysis/index.ts"],
+      "pragma-dsp/xform/stft": ["../../src/xform/stft.ts"],
       "pragma-dsp/xform/fourier": ["../../src/xform/fourier.ts"],
       "pragma-dsp/xform/fourier-fluent": ["../../src/xform/fourier-fluent.ts"],
       "pragma-dsp/fluent": ["../../src/fluent/index.ts"],
@@ -27,12 +39,21 @@
 
     /* Linting */
     "strict": true,
-    "noUnusedLocals": false,
+    "exactOptionalPropertyTypes": false,
+    "noUnusedLocals": true,
     "noUnusedParameters": false,
+    "noImplicitOverride": true,
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true,
     "noUncheckedIndexedAccess": true
   },
-  "include": ["src"]
+  "include": [
+    "src",
+    "../../src/analysis/**/*.ts",
+    "../../src/core/**/*.ts",
+    "../../src/fluent/**/*.ts",
+    "../../src/math/**/*.ts",
+    "../../src/xform/**/*.ts"
+  ]
 }
