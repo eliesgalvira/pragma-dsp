@@ -1,4 +1,4 @@
-import { Effect, Layer, ServiceMap } from "effect";
+import { Context, Effect, Layer } from "effect";
 
 import {
   AudioIoError,
@@ -185,7 +185,7 @@ const createStopPromise = (
     recorder.stop();
   });
 
-export class AudioInput extends ServiceMap.Service<
+export class AudioInput extends Context.Service<
   AudioInput,
   {
     readonly startRecording: (

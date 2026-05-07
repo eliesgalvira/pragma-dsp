@@ -1,4 +1,4 @@
-import { Effect, Layer, ServiceMap } from "effect";
+import { Context, Effect, Layer } from "effect";
 import { analyzeSpeech } from "pragma-dsp/analysis";
 import { FluentFFT } from "pragma-dsp/xform/fourier-fluent";
 
@@ -70,7 +70,7 @@ const applySpectralEdit = (samples: Float32Array, edit: SpectralEditKind) => {
   return chain.inverse().real;
 };
 
-export class SpeechAnalysis extends ServiceMap.Service<
+export class SpeechAnalysis extends Context.Service<
   SpeechAnalysis,
   {
     readonly analyzeSignal: (
