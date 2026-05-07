@@ -19,10 +19,10 @@ export interface FourierService {
   window: (type: WindowType, size: number) => Float64Array;
 }
 
-export class Fourier extends Context.Tag("pragma-dsp/Fourier")<
+export class Fourier extends Context.Service<
   Fourier,
   FourierService
->() {}
+>()("pragma-dsp/Fourier") {}
 
 export const FourierLive = Layer.effect(
   Fourier,
