@@ -13,13 +13,29 @@ The goal is not to hide DSP. The goal is to let users start at the simplest rung
 ## Installation
 
 ```bash
-npm install pragma-dsp
+npm install pragma-dsp@alpha
+```
+
+```bash
+pnpm add pragma-dsp@alpha
+```
+
+```bash
+bun add pragma-dsp@alpha
 ```
 
 If you want the optional Effect integration:
 
 ```bash
-npm install pragma-dsp effect
+npm install pragma-dsp@alpha effect
+```
+
+```bash
+pnpm add pragma-dsp@alpha effect
+```
+
+```bash
+bun add pragma-dsp@alpha effect
 ```
 
 ## What This Library Is Good For

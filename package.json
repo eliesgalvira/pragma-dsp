@@ -2,12 +2,37 @@
   "name": "pragma-dsp",
   "version": "0.1.0",
   "description": "Useful DSP primitives for TypeScript.",
+  "keywords": [
+    "dsp",
+    "fft",
+    "stft",
+    "spectrogram",
+    "audio",
+    "signal-processing",
+    "typescript"
+  ],
+  "homepage": "https://github.com/eliesgalvira/pragma-dsp",
+  "bugs": {
+    "url": "https://github.com/eliesgalvira/pragma-dsp/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/eliesgalvira/pragma-dsp.git"
+  },
+  "author": "Elies Galvira",
   "license": "MIT",
   "type": "module",
   "sideEffects": false,
+  "packageManager": "pnpm@10.32.1",
+  "engines": {
+    "node": ">=18"
+  },
   "files": [
     "dist"
   ],
+  "publishConfig": {
+    "tag": "alpha"
+  },
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
@@ -107,6 +132,11 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:reallife": "vitest run test/reallife/",
+    "check:pack": "pnpm pack --dry-run",
+    "check:tree-shaking": "is-tree-shakable && is-tree-shakable --resolution web",
+    "release:check": "pnpm run build && pnpm run typecheck && pnpm run test && pnpm run check:pack && pnpm run check:tree-shaking",
+    "release:alpha": "pnpm run release:check && npm publish --tag alpha",
+    "release:latest": "pnpm run release:check && npm publish --tag latest",
     "bench": "node --import tsx bench/run.ts",
     "gen:fixtures": "uv run --directory scripts python gen_fixtures.py --overwrite --out ../test/fixtures/pragma-dsp.v0.1.json",
     "gen:refs": "uv run --directory scripts python gen_reallife_refs.py --out ../test/reallife/references/"
@@ -114,6 +144,7 @@
   "devDependencies": {
     "@types/node": "25.5.0",
     "effect": "^3.0.0",
+    "is-tree-shakable": "0.5.0",
     "mitata": "^1.0.0",
     "tsdown": "^0.20.3",
     "tsx": "^4.21.0",
