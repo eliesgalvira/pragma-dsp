@@ -1,6 +1,6 @@
 # pragma-dsp
 
-Useful DSP primitives for TypeScript.
+Pragmatic DSP primitives for TypeScript.
 
 `pragma-dsp` is designed as an API ladder:
 
