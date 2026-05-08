@@ -16,7 +16,7 @@
  * @module
  */
 
-import type { ComplexArray } from "../core/fft.js";
+import type { ComplexArray } from "../core/fft.ts";
 import {
   scaleInto,
   mulInto,
@@ -29,7 +29,7 @@ import {
   copy,
   mag as magFn,
   arg as argFn,
-} from "../math/complex.js";
+} from "../math/complex.ts";
 
 // ── Typestate types ──────────────────────────────────────────────────
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { createWindow } from "../src/xform/fourier.js";
-import { loadFixtures } from "./fixtures.js";
+import { createWindow } from "../src/xform/fourier.ts";
+import { loadFixtures } from "./fixtures.ts";
 
 const expectCloseArray = (
   actual: ArrayLike<number>,

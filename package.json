@@ -97,6 +97,16 @@
         "default": "./dist/effect/index.cjs"
       }
     },
+    "./effect/Fourier": {
+      "import": {
+        "types": "./dist/effect/Fourier.d.mts",
+        "default": "./dist/effect/Fourier.mjs"
+      },
+      "require": {
+        "types": "./dist/effect/Fourier.d.cts",
+        "default": "./dist/effect/Fourier.cjs"
+      }
+    },
     "./math/complex": {
       "import": {
         "types": "./dist/math/index.d.mts",
@@ -165,6 +175,7 @@
   },
   "devDependencies": {
     "@effect/language-service": "0.85.1",
+    "@effect/platform-node": "4.0.0-beta.64",
     "@types/node": "25.5.0",
     "effect": "4.0.0-beta.64",
     "is-tree-shakable": "0.5.0",

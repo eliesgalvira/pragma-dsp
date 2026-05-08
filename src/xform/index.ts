@@ -1,2 +1,2 @@
-export * from "./fourier.js";
-export * from "./stft.js";
+export * from "./fourier.ts";
+export * from "./stft.ts";

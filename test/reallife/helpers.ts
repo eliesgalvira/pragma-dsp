@@ -1,12 +1,12 @@
+import * as Effect from "effect/Effect";
+import * as Schema from "effect/Schema";
+// @effect-diagnostics-next-line nodeBuiltinImport:off
 import { readFileSync } from "node:fs";
+// @effect-diagnostics-next-line nodeBuiltinImport:off
 import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 import { expect } from "vitest";
 
-const refsDir = resolve(
-  dirname(fileURLToPath(import.meta.url)),
-  "references"
-);
+const refsDir = resolve(dirname(new URL(import.meta.url).pathname), "references");
 
 // =============================================================================
 // Reference types
@@ -64,10 +64,13 @@ export type WindowDspReference = {
 // Reference loaders
 // =============================================================================
 
-export const loadReference = <T>(name: string): T => {
-  const path = resolve(refsDir, `${name}.json`);
-  return JSON.parse(readFileSync(path, "utf8")) as T;
-};
+export const loadReference = <T>(name: string): T =>
+  Effect.runSync(
+    Effect.sync(() => {
+      const content = readFileSync(resolve(refsDir, `${name}.json`), "utf8");
+      return Schema.decodeUnknownSync(Schema.UnknownFromJsonString)(content) as T;
+    })
+  );
 
 export const loadPureSine = (): SignalReference =>
   loadReference<SignalReference>("pure_sine");

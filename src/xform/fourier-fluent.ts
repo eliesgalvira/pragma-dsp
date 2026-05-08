@@ -21,9 +21,9 @@
  * @module
  */
 
-import type { ComplexArray } from "../core/fft.js";
-import { FFT } from "../xform/fourier.js";
-import { ComplexChain, type FftForwardState } from "../fluent/complex.js";
+import type { ComplexArray } from "../core/fft.ts";
+import { FFT } from "../xform/fourier.ts";
+import { ComplexChain, type FftForwardState } from "../fluent/complex.ts";
 
 /**
  * A fluent-friendly FFT wrapper.

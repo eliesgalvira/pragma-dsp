@@ -3,14 +3,26 @@
  * Provides reference loaders and BenchContext for measuring performance.
  */
 
+import * as DateTime from "effect/DateTime";
+import * as Effect from "effect/Effect";
+import * as Schema from "effect/Schema";
+// @effect-diagnostics-next-line nodeBuiltinImport:off
 import { readFileSync } from "node:fs";
+// @effect-diagnostics-next-line nodeBuiltinImport:off
 import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 
 const refsDir = resolve(
-  dirname(fileURLToPath(import.meta.url)),
+  dirname(new URL(import.meta.url).pathname),
   "../../test/reallife/references"
 );
+
+export const log = (...args: ReadonlyArray<unknown>): void => {
+  Effect.runSync(Effect.log(...args));
+};
+
+export const warn = (...args: ReadonlyArray<unknown>): void => {
+  Effect.runSync(Effect.logWarning(...args));
+};
 
 // =============================================================================
 // Reference types (same as test/reallife/helpers.ts)
@@ -68,10 +80,13 @@ export type WindowDspReference = {
 // Reference loaders
 // =============================================================================
 
-export const loadReference = <T>(name: string): T => {
-  const path = resolve(refsDir, `${name}.json`);
-  return JSON.parse(readFileSync(path, "utf8")) as T;
-};
+export const loadReference = <T>(name: string): T =>
+  Effect.runSync(
+    Effect.sync(() => {
+      const content = readFileSync(resolve(refsDir, `${name}.json`), "utf8");
+      return Schema.decodeUnknownSync(Schema.UnknownFromJsonString)(content) as T;
+    })
+  );
 
 export const loadPureSine = (): SignalReference =>
   loadReference<SignalReference>("pure_sine");
@@ -210,7 +225,7 @@ export class BenchContext {
       times.push(end - start);
 
       // Compute checksum to prevent dead-code elimination
-      if (result && typeof result === "object") {
+      if (result !== null && result !== undefined && typeof result === "object") {
         if ("real" in result && ArrayBuffer.isView((result as any).real)) {
           checksumValue += checksum((result as any).real);
         } else if (ArrayBuffer.isView(result)) {
@@ -236,7 +251,7 @@ export class BenchContext {
       checksum: checksumValue
     };
 
-    if (this.currentSection) {
+    if (this.currentSection !== null) {
       this.currentSection.timings.push(timing);
     }
 
@@ -257,7 +272,7 @@ export class BenchContext {
       rss: mem.rss
     };
 
-    if (this.currentSection) {
+    if (this.currentSection !== null) {
       this.currentSection.memory.push(snapshot);
     }
 
@@ -291,18 +306,18 @@ export class BenchContext {
     const divider = "=".repeat(70);
     const thinDivider = "-".repeat(70);
 
-    console.log();
-    console.log(divider);
-    console.log(`  ${this.title.toUpperCase()}`);
-    console.log(`  ${new Date().toISOString()}`);
-    console.log(divider);
-    console.log();
+    log();
+    log(divider);
+    log(`  ${this.title.toUpperCase()}`);
+    log(`  ${DateTime.formatIso(DateTime.nowUnsafe())}`);
+    log(divider);
+    log();
 
     let totalChecksum = 0;
 
     for (const section of this.sections) {
-      console.log(`[${section.name}]`);
-      console.log();
+      log(`[${section.name}]`);
+      log();
 
       // Print timings
       for (const t of section.timings) {
@@ -311,29 +326,29 @@ export class BenchContext {
         const avg = `avg: ${this.formatMs(t.avgMs)}`.padStart(14);
         const min = `min: ${this.formatMs(t.minMs)}`.padStart(14);
         const max = `max: ${this.formatMs(t.maxMs)}`.padStart(14);
-        console.log(`  ${label} ${iters} ${avg} ${min} ${max}`);
+        log(`  ${label} ${iters} ${avg} ${min} ${max}`);
         totalChecksum += t.checksum;
       }
 
       // Print memory snapshots
       if (section.memory.length > 0) {
-        console.log();
+        log();
         for (const m of section.memory) {
           const label = m.label.padEnd(45);
           const heap = `heap: ${this.formatBytes(m.heapUsed)}`.padStart(16);
           const rss = `rss: ${this.formatBytes(m.rss)}`.padStart(16);
-          console.log(`  ${label} ${heap} ${rss}`);
+          log(`  ${label} ${heap} ${rss}`);
         }
       }
 
-      console.log();
+      log();
     }
 
-    console.log(thinDivider);
-    console.log(`  Total benchmark time: ${this.formatMs(totalTime)}`);
-    console.log(`  Checksum (for validation): ${totalChecksum.toFixed(6)}`);
-    console.log(thinDivider);
-    console.log();
+    log(thinDivider);
+    log(`  Total benchmark time: ${this.formatMs(totalTime)}`);
+    log(`  Checksum (for validation): ${totalChecksum.toFixed(6)}`);
+    log(thinDivider);
+    log();
   }
 }
 

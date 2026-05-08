@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { spectrum } from "../../src/public/spectrum.js";
-import { loadPureSine, loadSpecial } from "./helpers.js";
+import { spectrum } from "../../src/public/spectrum.ts";
+import { loadPureSine, loadSpecial } from "./helpers.ts";
 
 describe("spectrum() amplitude scaling", () => {
   describe("one-sided spectrum (default)", () => {
@@ -35,7 +35,7 @@ describe("spectrum() amplitude scaling", () => {
     it("DC bin is not doubled", () => {
       const special = loadSpecial();
       const dcCase = special.cases.find((c) => c.kind === "dc");
-      if (!dcCase) throw new Error("Missing DC test case");
+      if (dcCase === undefined) throw new Error("Missing DC test case");
 
       const result = spectrum(dcCase.signal, {
         sampleRate: dcCase.sampleRate,
@@ -51,7 +51,7 @@ describe("spectrum() amplitude scaling", () => {
     it("Nyquist bin is not doubled", () => {
       const special = loadSpecial();
       const nyquistCase = special.cases.find((c) => c.kind === "nyquist");
-      if (!nyquistCase) throw new Error("Missing Nyquist test case");
+      if (nyquistCase === undefined) throw new Error("Missing Nyquist test case");
 
       const result = spectrum(nyquistCase.signal, {
         sampleRate: nyquistCase.sampleRate,
@@ -101,7 +101,7 @@ describe("spectrum() amplitude scaling", () => {
 
     it("returns full N bins for two-sided", () => {
       const testCase = ref.cases[0];
-      if (!testCase) throw new Error("No test cases available");
+      if (testCase === undefined) throw new Error("No test cases available");
 
       const result = spectrum(testCase.signal, {
         sampleRate: testCase.sampleRate,
@@ -137,7 +137,7 @@ describe("spectrum() amplitude scaling", () => {
 
     it("frequency axis is correctly scaled", () => {
       const testCase = ref.cases[0];
-      if (!testCase) throw new Error("No test cases available");
+      if (testCase === undefined) throw new Error("No test cases available");
 
       const result = spectrum(testCase.signal, {
         sampleRate: testCase.sampleRate,
@@ -168,7 +168,7 @@ describe("spectrum() amplitude scaling", () => {
     it("ignores DC when there are non-DC components", () => {
       const special = loadSpecial();
       const dcPlusSine = special.cases.find((c) => c.kind === "dc_plus_sine");
-      if (!dcPlusSine) throw new Error("Missing dc_plus_sine test case");
+      if (dcPlusSine === undefined) throw new Error("Missing dc_plus_sine test case");
 
       const result = spectrum(dcPlusSine.signal, {
         sampleRate: dcPlusSine.sampleRate,
@@ -185,7 +185,7 @@ describe("spectrum() amplitude scaling", () => {
     it("returns DC as peak when it is the only component", () => {
       const special = loadSpecial();
       const dcCase = special.cases.find((c) => c.kind === "dc");
-      if (!dcCase) throw new Error("Missing DC test case");
+      if (dcCase === undefined) throw new Error("Missing DC test case");
 
       const result = spectrum(dcCase.signal, {
         sampleRate: dcCase.sampleRate,

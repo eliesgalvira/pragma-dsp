@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { FFT, phase } from "../../src/xform/fourier.js";
-import { spectrum } from "../../src/public/spectrum.js";
-import { loadCosine, loadPureSine } from "./helpers.js";
+import { FFT, phase } from "../../src/xform/fourier.ts";
+import { spectrum } from "../../src/public/spectrum.ts";
+import { loadCosine, loadPureSine } from "./helpers.ts";
 
 describe("phase accuracy", () => {
   describe("sine vs cosine phase difference", () => {
@@ -16,7 +16,7 @@ describe("phase accuracy", () => {
       (c) => c.kind === "cosine" && c.params.bin_index === 8
     );
 
-    if (sineBin8 && cosineBin8) {
+    if (sineBin8 !== undefined && cosineBin8 !== undefined) {
       it("cosine leads sine by 90 degrees at peak bin", () => {
         const fft = new FFT(sineBin8.n);
 
@@ -103,7 +103,7 @@ describe("phase accuracy", () => {
     it("phase array has correct length for one-sided spectrum", () => {
       const ref = loadPureSine();
       const testCase = ref.cases[0];
-      if (!testCase) throw new Error("No test cases");
+      if (testCase === undefined) throw new Error("No test cases");
 
       const result = spectrum(testCase.signal, {
         sampleRate: testCase.sampleRate,
@@ -119,7 +119,7 @@ describe("phase accuracy", () => {
     it("phase array has correct length for two-sided spectrum", () => {
       const ref = loadPureSine();
       const testCase = ref.cases[0];
-      if (!testCase) throw new Error("No test cases");
+      if (testCase === undefined) throw new Error("No test cases");
 
       const result = spectrum(testCase.signal, {
         sampleRate: testCase.sampleRate,

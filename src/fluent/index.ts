@@ -11,4 +11,4 @@ export {
   asNonZero,
   ComplexChain,
   chain,
-} from "./complex.js";
+} from "./complex.ts";

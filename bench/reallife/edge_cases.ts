@@ -13,9 +13,9 @@
  * Run: bun run bench/reallife/edge_cases.ts
  */
 
-import { FFT, magnitude } from "../../src/xform/fourier.js";
-import { spectrum } from "../../src/public/spectrum.js";
-import { BenchContext, loadSpecial, maxAbsError } from "./helpers.js";
+import { FFT, magnitude } from "../../src/xform/fourier.ts";
+import { spectrum } from "../../src/public/spectrum.ts";
+import { BenchContext, loadSpecial, log, maxAbsError, warn } from "./helpers.ts";
 
 const bench = new BenchContext("Edge Cases Benchmark");
 
@@ -28,7 +28,7 @@ bench.section("Zero Input");
 const specialRef = loadSpecial();
 const zerosCase = specialRef.cases.find((c) => c.kind === "zeros");
 
-if (zerosCase) {
+if (zerosCase !== undefined) {
   const input = Float64Array.from(zerosCase.signal);
   const zerosFft = new FFT(zerosCase.n);
 
@@ -45,9 +45,9 @@ if (zerosCase) {
     }
   }
   if (allZeros) {
-    console.log(`  VERIFIED: FFT of zeros gives all zeros`);
+    log(`  VERIFIED: FFT of zeros gives all zeros`);
   } else {
-    console.warn(`  WARNING: FFT of zeros has non-zero values`);
+    warn(`  WARNING: FFT of zeros has non-zero values`);
   }
 }
 
@@ -72,9 +72,9 @@ for (let i = 0; i < spectrumResult.amplitude.length; i += 1) {
   }
 }
 if (allAmpsZero && spectrumResult.peak.amplitude === 0) {
-  console.log(`  VERIFIED: spectrum of zeros gives zero amplitude`);
+  log(`  VERIFIED: spectrum of zeros gives zero amplitude`);
 } else {
-  console.warn(`  WARNING: spectrum of zeros has non-zero amplitude`);
+  warn(`  WARNING: spectrum of zeros has non-zero amplitude`);
 }
 
 bench.memory("After zero input");
@@ -87,7 +87,7 @@ bench.section("DC-Only Signal");
 
 const dcCase = specialRef.cases.find((c) => c.kind === "dc");
 
-if (dcCase) {
+if (dcCase !== undefined) {
   const input = Float64Array.from(dcCase.signal);
   const dcFft = new FFT(dcCase.n);
 
@@ -111,9 +111,9 @@ if (dcCase) {
   }
 
   if (dcCorrect && otherBinsZero) {
-    console.log(`  VERIFIED: DC energy only in bin 0 (${mag[0]!.toFixed(6)})`);
+    log(`  VERIFIED: DC energy only in bin 0 (${mag[0]!.toFixed(6)})`);
   } else {
-    console.warn(`  WARNING: DC energy distribution incorrect`);
+    warn(`  WARNING: DC energy distribution incorrect`);
   }
 }
 
@@ -127,7 +127,7 @@ bench.section("Nyquist Signal (Alternating +1/-1)");
 
 const nyquistCase = specialRef.cases.find((c) => c.kind === "nyquist");
 
-if (nyquistCase) {
+if (nyquistCase !== undefined) {
   const input = Float64Array.from(nyquistCase.signal);
   const nyquistFft = new FFT(nyquistCase.n);
 
@@ -153,11 +153,11 @@ if (nyquistCase) {
   }
 
   if (nyquistCorrect && otherBinsZero) {
-    console.log(
+    log(
       `  VERIFIED: Nyquist energy only at bin ${nyquistBin} (${mag[nyquistBin]!.toFixed(6)})`
     );
   } else {
-    console.warn(`  WARNING: Nyquist energy distribution incorrect`);
+    warn(`  WARNING: Nyquist energy distribution incorrect`);
   }
 }
 
@@ -174,7 +174,7 @@ const impulse0 = specialRef.cases.find(
   (c) => c.kind === "impulse" && c.params.position === 0
 );
 
-if (impulse0) {
+if (impulse0 !== undefined) {
   const input = Float64Array.from(impulse0.signal);
   const impulseFft = new FFT(impulse0.n);
 
@@ -196,11 +196,11 @@ if (impulse0) {
   }
 
   if (allFlat) {
-    console.log(
+    log(
       `  VERIFIED: Impulse at pos 0 has flat magnitude spectrum (${mag[0]!.toFixed(6)})`
     );
   } else {
-    console.warn(`  WARNING: Impulse magnitude spectrum not flat`);
+    warn(`  WARNING: Impulse magnitude spectrum not flat`);
   }
 }
 
@@ -209,7 +209,7 @@ const impulseMid = specialRef.cases.find(
   (c) => c.kind === "impulse" && (c.params.position as number) > 0
 );
 
-if (impulseMid) {
+if (impulseMid !== undefined) {
   const input = Float64Array.from(impulseMid.signal);
   const impulseFft = new FFT(impulseMid.n);
 
@@ -231,11 +231,11 @@ if (impulseMid) {
   }
 
   if (allFlat) {
-    console.log(
+    log(
       `  VERIFIED: Shifted impulse still has flat magnitude spectrum`
     );
   } else {
-    console.warn(`  WARNING: Shifted impulse magnitude spectrum not flat`);
+    warn(`  WARNING: Shifted impulse magnitude spectrum not flat`);
   }
 }
 
@@ -249,7 +249,7 @@ bench.section("Very Small Values (Tiny Amplitude)");
 
 const tinyCase = specialRef.cases.find((c) => c.kind === "tiny");
 
-if (tinyCase) {
+if (tinyCase !== undefined) {
   const input = Float64Array.from(tinyCase.signal);
   const tinyFft = new FFT(tinyCase.n);
 
@@ -267,17 +267,17 @@ if (tinyCase) {
   }
 
   if (!hasInvalidValues) {
-    console.log(`  VERIFIED: Tiny amplitude handled without NaN/Inf`);
+    log(`  VERIFIED: Tiny amplitude handled without NaN/Inf`);
   } else {
-    console.warn(`  WARNING: Tiny amplitude produced NaN or Inf`);
+    warn(`  WARNING: Tiny amplitude produced NaN or Inf`);
   }
 
   // Verify matches reference
   const maxErr = maxAbsError(fftResult.real, Float64Array.from(tinyCase.fftRe));
   if (maxErr < 1e-20) {
-    console.log(`  VERIFIED: Tiny amplitude matches reference (maxErr=${maxErr})`);
+    log(`  VERIFIED: Tiny amplitude matches reference (maxErr=${maxErr})`);
   } else {
-    console.warn(`  WARNING: Tiny amplitude deviates from reference (maxErr=${maxErr})`);
+    warn(`  WARNING: Tiny amplitude deviates from reference (maxErr=${maxErr})`);
   }
 }
 
@@ -291,7 +291,7 @@ bench.section("Very Large Values (Large Amplitude)");
 
 const largeCase = specialRef.cases.find((c) => c.kind === "large");
 
-if (largeCase) {
+if (largeCase !== undefined) {
   const input = Float64Array.from(largeCase.signal);
   const largeFft = new FFT(largeCase.n);
 
@@ -309,9 +309,9 @@ if (largeCase) {
   }
 
   if (!hasInvalidValues) {
-    console.log(`  VERIFIED: Large amplitude handled without NaN/Inf`);
+    log(`  VERIFIED: Large amplitude handled without NaN/Inf`);
   } else {
-    console.warn(`  WARNING: Large amplitude produced NaN or Inf`);
+    warn(`  WARNING: Large amplitude produced NaN or Inf`);
   }
 
   // Verify relative error
@@ -326,9 +326,9 @@ if (largeCase) {
   }
 
   if (maxRelErr < 1e-9) {
-    console.log(`  VERIFIED: Large amplitude matches reference (maxRelErr=${maxRelErr.toExponential(2)})`);
+    log(`  VERIFIED: Large amplitude matches reference (maxRelErr=${maxRelErr.toExponential(2)})`);
   } else {
-    console.warn(`  WARNING: Large amplitude deviates from reference (maxRelErr=${maxRelErr.toExponential(2)})`);
+    warn(`  WARNING: Large amplitude deviates from reference (maxRelErr=${maxRelErr.toExponential(2)})`);
   }
 }
 
@@ -355,17 +355,17 @@ const paddedResult = bench.time(
 );
 
 if (paddedResult.amplitude.length === paddedSize / 2 + 1) {
-  console.log(`  VERIFIED: Zero-padding works (${paddedResult.amplitude.length} bins)`);
+  log(`  VERIFIED: Zero-padding works (${paddedResult.amplitude.length} bins)`);
 } else {
-  console.warn(
+  warn(
     `  WARNING: Zero-padding gave ${paddedResult.amplitude.length} bins, expected ${paddedSize / 2 + 1}`
   );
 }
 
 if (Number.isFinite(paddedResult.peak.amplitude)) {
-  console.log(`  VERIFIED: Zero-padded peak amplitude is finite`);
+  log(`  VERIFIED: Zero-padded peak amplitude is finite`);
 } else {
-  console.warn(`  WARNING: Zero-padded peak amplitude is not finite`);
+  warn(`  WARNING: Zero-padded peak amplitude is not finite`);
 }
 
 // DC signal zero-padded
@@ -383,11 +383,11 @@ const dcPaddedResult = bench.time(`spectrum (DC input=4, fftSize=${paddedSize})`
 const expectedDcAmp = 4 / paddedSize;
 const dcAmpError = Math.abs(dcPaddedResult.amplitude[0]! - expectedDcAmp);
 if (dcAmpError < 1e-6) {
-  console.log(
+  log(
     `  VERIFIED: Zero-padded DC amplitude = ${dcPaddedResult.amplitude[0]!.toFixed(6)} (expected ${expectedDcAmp})`
   );
 } else {
-  console.warn(
+  warn(
     `  WARNING: Zero-padded DC amplitude = ${dcPaddedResult.amplitude[0]}, expected ${expectedDcAmp}`
   );
 }
@@ -412,17 +412,17 @@ for (const testCase of specialRef.cases) {
   // Verify real part matches input
   const realErr = maxAbsError(result.real, input);
   if (realErr > 1e-9) {
-    console.warn(`  WARNING: ${testCase.name} real part error ${realErr}`);
+    warn(`  WARNING: ${testCase.name} real part error ${realErr}`);
   }
 
   // Verify imaginary part is near zero
   const imagErr = maxAbsError(result.imag, new Float64Array(testCase.n));
   if (imagErr > 1e-9) {
-    console.warn(`  WARNING: ${testCase.name} imag part error ${imagErr}`);
+    warn(`  WARNING: ${testCase.name} imag part error ${imagErr}`);
   }
 }
 
-console.log(`  VERIFIED: All ${specialRef.cases.length} special signals round-trip correctly`);
+log(`  VERIFIED: All ${specialRef.cases.length} special signals round-trip correctly`);
 
 bench.memory("After round-trip");
 

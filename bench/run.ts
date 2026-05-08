@@ -1,6 +1,7 @@
 import { bench, group, run } from "mitata";
-import { FFT } from "../src/xform/fourier.js";
-import { loadFixtures } from "../test/fixtures.js";
+import * as Effect from "effect/Effect";
+import { FFT } from "../src/xform/fourier.ts";
+import { loadFixtures } from "../test/fixtures.ts";
 
 const fixtures = loadFixtures();
 const benchCases = fixtures.fftCases.filter(
@@ -31,5 +32,5 @@ await run();
 
 for (const [n, checksum] of checksums) {
   // Guardrail output to ensure deterministic work per run.
-  console.log(`checksum n=${n}: ${checksum.toFixed(6)}`);
+  Effect.runSync(Effect.log(`checksum n=${n}: ${checksum.toFixed(6)}`));
 }

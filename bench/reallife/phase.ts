@@ -10,9 +10,9 @@
  * Run: bun run bench/reallife/phase.ts
  */
 
-import { FFT, phase } from "../../src/xform/fourier.js";
-import { spectrum } from "../../src/public/spectrum.js";
-import { BenchContext, loadCosine, loadPureSine } from "./helpers.js";
+import { FFT, phase } from "../../src/xform/fourier.ts";
+import { spectrum } from "../../src/public/spectrum.ts";
+import { BenchContext, loadCosine, loadPureSine, log, warn } from "./helpers.ts";
 
 const bench = new BenchContext("Phase Benchmark");
 
@@ -37,7 +37,7 @@ const cosineBin8 = cosineRef.cases.find(
   (c) => c.kind === "cosine" && c.params.bin_index === 8
 );
 
-if (sineBin8 && cosineBin8) {
+if (sineBin8 !== undefined && cosineBin8 !== undefined) {
   const sineInput = Float64Array.from(sineBin8.signal);
   const cosineInput = Float64Array.from(cosineBin8.signal);
   const bin = sineBin8.params.bin_index as number;
@@ -69,11 +69,11 @@ if (sineBin8 && cosineBin8) {
   const expectedDiff = Math.PI / 2;
   const diffError = Math.abs(phaseDiff - expectedDiff);
   if (diffError > 1e-6) {
-    console.warn(
+    warn(
       `  WARNING: Phase difference ${phaseDiff.toFixed(6)}, expected ${expectedDiff.toFixed(6)}, error ${diffError.toFixed(6)}`
     );
   } else {
-    console.log(
+    log(
       `  VERIFIED: Cosine leads sine by ${(phaseDiff * 180 / Math.PI).toFixed(2)} degrees at bin ${bin}`
     );
   }
@@ -105,7 +105,7 @@ for (const testCase of phaseCases) {
   diff = Math.min(diff, Math.abs(diff - 2 * Math.PI));
 
   if (diff > 1e-10) {
-    console.warn(
+    warn(
       `  WARNING: Phase at bin ${bin} is ${ph[bin]}, expected ${expectedPhase}, diff ${diff}`
     );
   }
@@ -135,7 +135,7 @@ for (const testCase of phaseCases) {
 
   // Verify peak index
   if (result.peak.index !== expectedBin) {
-    console.warn(
+    warn(
       `  WARNING: Peak at bin ${result.peak.index}, expected ${expectedBin}`
     );
   }
@@ -144,7 +144,7 @@ for (const testCase of phaseCases) {
   let diff = Math.abs(result.peak.phase - expectedPhase);
   diff = Math.min(diff, Math.abs(diff - 2 * Math.PI));
   if (diff > 1e-10) {
-    console.warn(
+    warn(
       `  WARNING: Peak phase ${result.peak.phase}, expected ${expectedPhase}, diff ${diff}`
     );
   }
@@ -175,11 +175,11 @@ const oneSidedResult = bench.time(
 
 const expectedOneSided = testCase.n / 2 + 1;
 if (oneSidedResult.phase.length !== expectedOneSided) {
-  console.warn(
+  warn(
     `  WARNING: One-sided phase length ${oneSidedResult.phase.length}, expected ${expectedOneSided}`
   );
 } else {
-  console.log(
+  log(
     `  VERIFIED: One-sided phase length = ${oneSidedResult.phase.length} (N/2 + 1)`
   );
 }
@@ -197,11 +197,11 @@ const twoSidedResult = bench.time(
 );
 
 if (twoSidedResult.phase.length !== testCase.n) {
-  console.warn(
+  warn(
     `  WARNING: Two-sided phase length ${twoSidedResult.phase.length}, expected ${testCase.n}`
   );
 } else {
-  console.log(
+  log(
     `  VERIFIED: Two-sided phase length = ${twoSidedResult.phase.length} (N)`
   );
 }
@@ -225,9 +225,9 @@ const posResult = bench.time(`FFT + phase (positive DC, n=${n})`, () => {
 });
 
 if (Math.abs(posResult[0]!) > 1e-10) {
-  console.warn(`  WARNING: Positive DC phase ${posResult[0]}, expected ~0`);
+  warn(`  WARNING: Positive DC phase ${posResult[0]}, expected ~0`);
 } else {
-  console.log(`  VERIFIED: Positive DC phase = ${posResult[0]!.toFixed(6)}`);
+  log(`  VERIFIED: Positive DC phase = ${posResult[0]!.toFixed(6)}`);
 }
 
 // Negative DC signal
@@ -239,9 +239,9 @@ const negResult = bench.time(`FFT + phase (negative DC, n=${n})`, () => {
 
 // atan2(0, negative) = π
 if (Math.abs(Math.abs(negResult[0]!) - Math.PI) > 1e-10) {
-  console.warn(`  WARNING: Negative DC phase ${negResult[0]}, expected ~π`);
+  warn(`  WARNING: Negative DC phase ${negResult[0]}, expected ~π`);
 } else {
-  console.log(`  VERIFIED: Negative DC phase = ${negResult[0]!.toFixed(6)} (≈ π)`);
+  log(`  VERIFIED: Negative DC phase = ${negResult[0]!.toFixed(6)} (≈ π)`);
 }
 
 bench.memory("After DC phase");
@@ -280,7 +280,7 @@ bench.memory("After various sizes");
 
 bench.section("Batch Phase Processing (100 frames)");
 
-if (sineBin8) {
+if (sineBin8 !== undefined) {
   const batchInput = Float64Array.from(sineBin8.signal);
   const batchFft = new FFT(sineRef.n);
 

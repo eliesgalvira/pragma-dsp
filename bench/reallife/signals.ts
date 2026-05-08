@@ -10,15 +10,16 @@
  * Run: bun run bench/reallife/signals.ts
  */
 
-import { FFT, magnitude, phase } from "../../src/xform/fourier.js";
+import { FFT, magnitude, phase } from "../../src/xform/fourier.ts";
 import {
   BenchContext,
   loadChirp,
   loadMultiTone,
   loadPureSine,
   loadSpecial,
-  maxAbsError
-} from "./helpers.js";
+  maxAbsError,
+  warn
+} from "./helpers.ts";
 
 const bench = new BenchContext("Signals Benchmark");
 
@@ -42,16 +43,16 @@ const sinePhase = sineRef.cases.filter((c) => c.kind === "pure_sine_phase");
 
 for (const testCase of sineBinCentered.slice(0, 5)) {
   const input = Float64Array.from(testCase.signal);
-  bench.time(`FFT forward (${testCase.name}, n=${testCase.n})`, () => {
-    return sineFft.forward(input);
-  });
+  bench.time(`FFT forward (${testCase.name}, n=${testCase.n})`, () =>
+    sineFft.forward(input)
+  );
 }
 
 for (const testCase of sineNonCentered) {
   const input = Float64Array.from(testCase.signal);
-  bench.time(`FFT forward (${testCase.name}, n=${testCase.n})`, () => {
-    return sineFft.forward(input);
-  });
+  bench.time(`FFT forward (${testCase.name}, n=${testCase.n})`, () =>
+    sineFft.forward(input)
+  );
 }
 
 bench.memory("After sine FFT forward");
@@ -66,13 +67,9 @@ for (const testCase of sineBinCentered.slice(0, 3)) {
   const input = Float64Array.from(testCase.signal);
   const fftResult = sineFft.forward(input);
 
-  bench.time(`magnitude (${testCase.name})`, () => {
-    return magnitude(fftResult);
-  });
+  bench.time(`magnitude (${testCase.name})`, () => magnitude(fftResult));
 
-  bench.time(`phase (${testCase.name})`, () => {
-    return phase(fftResult);
-  });
+  bench.time(`phase (${testCase.name})`, () => phase(fftResult));
 }
 
 bench.memory("After magnitude/phase");
@@ -95,7 +92,7 @@ for (const testCase of sineBinCentered.slice(0, 3)) {
   // Verify round-trip accuracy (not timed)
   const error = maxAbsError(result.real, input);
   if (error > 1e-10) {
-    console.warn(`  WARNING: Round-trip error ${error} exceeds tolerance`);
+    warn(`  WARNING: Round-trip error ${error} exceeds tolerance`);
   }
 }
 
@@ -113,9 +110,9 @@ const multiFft = new FFT(multiRef.n);
 for (const testCase of multiRef.cases) {
   const input = Float64Array.from(testCase.signal);
 
-  bench.time(`FFT forward (${testCase.name}, n=${testCase.n})`, () => {
-    return multiFft.forward(input);
-  });
+  bench.time(`FFT forward (${testCase.name}, n=${testCase.n})`, () =>
+    multiFft.forward(input)
+  );
 
   // Verify peaks (not timed)
   const fftResult = multiFft.forward(input);
@@ -130,7 +127,7 @@ for (const testCase of multiRef.cases) {
     const actualMag = mag[bin]!;
     const relError = Math.abs(actualMag - expectedMag) / expectedMag;
     if (relError > 0.01) {
-      console.warn(
+      warn(
         `  WARNING: Peak at bin ${bin} has ${relError * 100}% error`
       );
     }
@@ -157,9 +154,9 @@ const chirpFft = new FFT(chirpRef.n);
 for (const testCase of chirpRef.cases) {
   const input = Float64Array.from(testCase.signal);
 
-  bench.time(`FFT forward (${testCase.name}, n=${testCase.n})`, () => {
-    return chirpFft.forward(input);
-  });
+  bench.time(`FFT forward (${testCase.name}, n=${testCase.n})`, () =>
+    chirpFft.forward(input)
+  );
 
   const result = bench.time(`round-trip (${testCase.name})`, () => {
     const forward = chirpFft.forward(input);
@@ -169,7 +166,7 @@ for (const testCase of chirpRef.cases) {
   // Verify round-trip accuracy
   const error = maxAbsError(result.real, input);
   if (error > 1e-10) {
-    console.warn(`  WARNING: Chirp round-trip error ${error} exceeds tolerance`);
+    warn(`  WARNING: Chirp round-trip error ${error} exceeds tolerance`);
   }
 }
 
@@ -185,12 +182,12 @@ const specialRef = loadSpecial();
 const specialFft = new FFT(specialRef.n);
 
 const impulseCase = specialRef.cases.find((c) => c.kind === "impulse");
-if (impulseCase) {
+if (impulseCase !== undefined) {
   const input = Float64Array.from(impulseCase.signal);
 
-  bench.time(`FFT forward (impulse, n=${impulseCase.n})`, () => {
-    return specialFft.forward(input);
-  });
+  bench.time(`FFT forward (impulse, n=${impulseCase.n})`, () =>
+    specialFft.forward(input)
+  );
 
   // Verify flat magnitude
   const fftResult = specialFft.forward(input);
@@ -199,7 +196,7 @@ if (impulseCase) {
     const expectedMag = impulseCase.params.amplitude as number;
     for (let i = 0; i < impulseCase.n; i += 1) {
       if (Math.abs(mag[i]! - expectedMag) > 1e-10) {
-        console.warn(`  WARNING: Impulse magnitude not flat at bin ${i}`);
+        warn(`  WARNING: Impulse magnitude not flat at bin ${i}`);
         break;
       }
     }
@@ -207,29 +204,29 @@ if (impulseCase) {
 }
 
 const dcCase = specialRef.cases.find((c) => c.kind === "dc");
-if (dcCase) {
+if (dcCase !== undefined) {
   const input = Float64Array.from(dcCase.signal);
 
-  bench.time(`FFT forward (DC, n=${dcCase.n})`, () => {
-    return specialFft.forward(input);
-  });
+  bench.time(`FFT forward (DC, n=${dcCase.n})`, () =>
+    specialFft.forward(input)
+  );
 
   // Verify DC only in bin 0
   const fftResult = specialFft.forward(input);
   const mag = magnitude(fftResult);
   const expectedDc = dcCase.n * (dcCase.params.level as number);
   if (Math.abs(mag[0]! - expectedDc) > 1e-10) {
-    console.warn(`  WARNING: DC magnitude mismatch`);
+    warn(`  WARNING: DC magnitude mismatch`);
   }
 }
 
 const nyquistCase = specialRef.cases.find((c) => c.kind === "nyquist");
-if (nyquistCase) {
+if (nyquistCase !== undefined) {
   const input = Float64Array.from(nyquistCase.signal);
 
-  bench.time(`FFT forward (Nyquist, n=${nyquistCase.n})`, () => {
-    return specialFft.forward(input);
-  });
+  bench.time(`FFT forward (Nyquist, n=${nyquistCase.n})`, () =>
+    specialFft.forward(input)
+  );
 
   // Verify energy only at Nyquist bin
   const fftResult = specialFft.forward(input);
@@ -237,17 +234,17 @@ if (nyquistCase) {
   const nyquistBin = nyquistCase.n / 2;
   const expectedMag = nyquistCase.n * (nyquistCase.params.amplitude as number);
   if (Math.abs(mag[nyquistBin]! - expectedMag) > 1e-10) {
-    console.warn(`  WARNING: Nyquist magnitude mismatch`);
+    warn(`  WARNING: Nyquist magnitude mismatch`);
   }
 }
 
 const zerosCase = specialRef.cases.find((c) => c.kind === "zeros");
-if (zerosCase) {
+if (zerosCase !== undefined) {
   const input = Float64Array.from(zerosCase.signal);
 
-  bench.time(`FFT forward (zeros, n=${zerosCase.n})`, () => {
-    return specialFft.forward(input);
-  });
+  bench.time(`FFT forward (zeros, n=${zerosCase.n})`, () =>
+    specialFft.forward(input)
+  );
 }
 
 bench.memory("After special signals");

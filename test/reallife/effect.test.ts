@@ -1,20 +1,24 @@
 import { describe, expect, it } from "vitest";
-import { Effect, Stream } from "effect";
-import { spectrum } from "../../src/public/spectrum.js";
+import * as Effect from "effect/Effect";
+import * as ManagedRuntime from "effect/ManagedRuntime";
+import * as Stream from "effect/Stream";
+import { spectrum } from "../../src/public/spectrum.ts";
 import {
   Fourier,
   FourierLive,
   spectrumFx,
   spectrumStream
-} from "../../src/effect/index.js";
-import { loadPureSine } from "./helpers.js";
+} from "../../src/effect/index.ts";
+import { loadPureSine } from "./helpers.ts";
 
 describe("Effect API parity", () => {
+  const runtime = ManagedRuntime.make(FourierLive);
+
   describe("spectrumFx", () => {
     const ref = loadPureSine();
 
     for (const testCase of ref.cases.slice(0, 3)) {
-      it(`spectrumFx matches spectrum() for ${testCase.name}`, async () => {
+      it(`spectrumFx matches spectrum() for ${testCase.name}`, () => {
         const options = {
           sampleRate: testCase.sampleRate,
           fftSize: testCase.n,
@@ -26,9 +30,7 @@ describe("Effect API parity", () => {
         const pureResult = spectrum(testCase.signal, options);
 
         // Effect API result
-        const effectResult = await Effect.runPromise(
-          spectrumFx(testCase.signal, options).pipe(Effect.provide(FourierLive))
-        );
+        const effectResult = runtime.runSync(spectrumFx(testCase.signal, options));
 
         // Results should be identical
         expect(effectResult.peak.index).toBe(pureResult.peak.index);
@@ -48,7 +50,7 @@ describe("Effect API parity", () => {
   });
 
   describe("Fourier service caching", () => {
-    it("returns same FFT instance for same size", async () => {
+    it("returns same FFT instance for same size", () => {
       const program = Effect.gen(function* () {
         const service = yield* Fourier;
         const fft1 = service.fft(64);
@@ -58,9 +60,7 @@ describe("Effect API parity", () => {
         return { fft1, fft2, fft3 };
       });
 
-      const result = await Effect.runPromise(
-        program.pipe(Effect.provide(FourierLive))
-      );
+      const result = runtime.runSync(program);
 
       // Same size should return same instance
       expect(result.fft1).toBe(result.fft2);
@@ -69,7 +69,7 @@ describe("Effect API parity", () => {
       expect(result.fft1).not.toBe(result.fft3);
     });
 
-    it("returns same window instance for same type and size", async () => {
+    it("returns same window instance for same type and size", () => {
       const program = Effect.gen(function* () {
         const service = yield* Fourier;
         const w1 = service.window("hann", 64);
@@ -80,9 +80,7 @@ describe("Effect API parity", () => {
         return { w1, w2, w3, w4 };
       });
 
-      const result = await Effect.runPromise(
-        program.pipe(Effect.provide(FourierLive))
-      );
+      const result = runtime.runSync(program);
 
       // Same type and size should return same instance
       expect(result.w1).toBe(result.w2);
@@ -96,10 +94,10 @@ describe("Effect API parity", () => {
   });
 
   describe("spectrumStream", () => {
-    it("processes multiple frames correctly", async () => {
+    it("processes multiple frames correctly", () => {
       const ref = loadPureSine();
       const testCase = ref.cases[0];
-      if (!testCase) throw new Error("No test cases");
+      if (testCase === undefined) throw new Error("No test cases");
 
       const options = {
         sampleRate: testCase.sampleRate,
@@ -113,10 +111,8 @@ describe("Effect API parity", () => {
       const frames = Stream.fromIterable([frame, frame, frame]);
 
       // Process with spectrumStream
-      const results = await Effect.runPromise(
-        Stream.runCollect(spectrumStream(frames, options)).pipe(
-          Effect.provide(FourierLive)
-        )
+      const results = runtime.runSync(
+        Stream.runCollect(spectrumStream(frames, options))
       );
 
       // Should have 3 results
@@ -133,13 +129,13 @@ describe("Effect API parity", () => {
       }
     });
 
-    it("handles empty stream", async () => {
+    it("handles empty stream", () => {
       const frames = Stream.empty as Stream.Stream<Float32Array>;
 
-      const results = await Effect.runPromise(
+      const results = runtime.runSync(
         Stream.runCollect(
           spectrumStream(frames, { sampleRate: 48000, fftSize: 64 })
-        ).pipe(Effect.provide(FourierLive))
+        )
       );
 
       expect(Array.from(results).length).toBe(0);
@@ -150,10 +146,10 @@ describe("Effect API parity", () => {
     const windowTypes = ["rect", "hann", "hamming", "blackman"] as const;
 
     for (const windowType of windowTypes) {
-      it(`supports ${windowType} window`, async () => {
+      it(`supports ${windowType} window`, () => {
         const ref = loadPureSine();
         const testCase = ref.cases[0];
-        if (!testCase) throw new Error("No test cases");
+        if (testCase === undefined) throw new Error("No test cases");
 
         const options = {
           sampleRate: testCase.sampleRate,
@@ -164,9 +160,7 @@ describe("Effect API parity", () => {
 
         // Both APIs should work with all window types
         const pureResult = spectrum(testCase.signal, options);
-        const effectResult = await Effect.runPromise(
-          spectrumFx(testCase.signal, options).pipe(Effect.provide(FourierLive))
-        );
+        const effectResult = runtime.runSync(spectrumFx(testCase.signal, options));
 
         expect(effectResult.peak.index).toBe(pureResult.peak.index);
         expect(effectResult.peak.amplitude).toBeCloseTo(

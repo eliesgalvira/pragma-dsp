@@ -9,7 +9,7 @@
  * @module
  */
 
-import type { ComplexArray } from "../core/fft.js";
+import type { ComplexArray } from "../core/fft.ts";
 
 // ── helpers ──────────────────────────────────────────────────────────
 

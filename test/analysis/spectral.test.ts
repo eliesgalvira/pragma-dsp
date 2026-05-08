@@ -3,7 +3,7 @@ import {
   magnitudeToDb,
   movingAverage,
   spectralEnvelope,
-} from "../../src/analysis/spectral.js";
+} from "../../src/analysis/spectral.ts";
 
 describe("spectral helpers", () => {
   it("movingAverage smooths with edge handling", () => {

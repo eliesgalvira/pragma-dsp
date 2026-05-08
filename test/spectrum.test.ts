@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { spectrum } from "../src/public/spectrum.js";
-import { loadFixtures } from "./fixtures.js";
+import { spectrum } from "../src/public/spectrum.ts";
+import { loadFixtures } from "./fixtures.ts";
 
 describe("spectrum scaling + peak detection", () => {
   const fixtures = loadFixtures();
@@ -8,7 +8,7 @@ describe("spectrum scaling + peak detection", () => {
     (c) => c.kind === "sine_bin_centered"
   );
 
-  if (!sineCase) {
+  if (sineCase === undefined) {
     throw new Error("Missing sine_bin_centered fixture case.");
   }
 

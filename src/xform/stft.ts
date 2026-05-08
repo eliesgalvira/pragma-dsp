@@ -1,5 +1,5 @@
-import type { ComplexArray } from "../core/fft.js";
-import { createComplexArray } from "../core/fft.js";
+import type { ComplexArray } from "../core/fft.ts";
+import { createComplexArray } from "../core/fft.ts";
 import {
   FFT,
   applyWindow,
@@ -7,7 +7,7 @@ import {
   createWindow,
   type FftSides,
   type WindowType,
-} from "./fourier.js";
+} from "./fourier.ts";
 
 export type StftWindow = WindowType | ArrayLike<number>;
 

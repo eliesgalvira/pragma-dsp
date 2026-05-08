@@ -7,7 +7,7 @@ import {
   createComplexArray,
   isPowerOfTwo,
   nextPowerOfTwo
-} from "../core/fft.js";
+} from "../core/fft.ts";
 
 export type WindowType = "rect" | "hann" | "hamming" | "blackman";
 export type FftSides = "one" | "two";

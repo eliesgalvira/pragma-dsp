@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ComplexArray } from "../../src/core/fft.js";
+import type { ComplexArray } from "../../src/core/fft.ts";
 import {
   scale,
   scaleInto,
@@ -22,7 +22,7 @@ import {
   copy,
   copyInto,
   zero,
-} from "../../src/math/complex.js";
+} from "../../src/math/complex.ts";
 
 // ── helpers ──────────────────────────────────────────────────────────
 
