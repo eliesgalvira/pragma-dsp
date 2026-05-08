@@ -24,8 +24,8 @@ importers:
         specifier: ^2.1.1
         version: 2.1.1
       effect:
-        specifier: ^4.0.0-beta.48
-        version: 4.0.0-beta.63
+        specifier: ^4.0.0-beta.64
+        version: 4.0.0-beta.64
       lucide-react:
         specifier: ^1.6.0
         version: 1.14.0(react@19.2.6)
@@ -1991,8 +1991,8 @@ packages:
   ee-first@1.1.1:
     resolution: {integrity: sha512-WMwm9LhRUo+WUaRN+vRuETqG89IgZphVSNkdFgeb6sS/E4OrDIN7t48CAewSHXc6C8lefD8KKfr5vY61brQlow==}
 
-  effect@4.0.0-beta.63:
-    resolution: {integrity: sha512-uiBtZUhm+Vd4Es9+kmvIk5FUGlDDswVcG1FQe+ugw5h2nJkbSkZbEbBLBiMTnVVZ3OnQOi+7NVKYxMkZsJAzlw==}
+  effect@4.0.0-beta.64:
+    resolution: {integrity: sha512-xI332I9guVLsqvLg7aO62IuWq9LiCMs+u5dhr4JDyND2ndYXAk5eaR8KMqtYLoJg1Ie28VQToYPM+xBLEBU3pQ==}
 
   electron-to-chromium@1.5.352:
     resolution: {integrity: sha512-9wHk8x6dyuimoe18EdiDPWKExNdxYqo4fn4FwOVVper6RxT3cmpBwBkWWfSOCYJjQdIco/nPhJhNLmn4Ufg1Yg==}
@@ -5221,7 +5221,7 @@ snapshots:
 
   ee-first@1.1.1: {}
 
-  effect@4.0.0-beta.63:
+  effect@4.0.0-beta.64:
     dependencies:
       '@standard-schema/spec': 1.1.0
       fast-check: 4.7.0

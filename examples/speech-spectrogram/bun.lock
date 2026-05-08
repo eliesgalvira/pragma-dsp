@@ -10,7 +10,7 @@
         "ai": "^6.0.138",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
-        "effect": "^4.0.0-beta.48",
+        "effect": "^4.0.0-beta.64",
         "lucide-react": "^1.6.0",
         "media-chrome": "^4.18.2",
         "pragma-dsp": "link:../../",
@@ -644,7 +644,7 @@
 
     "ee-first": ["ee-first@1.1.1", "", {}, "sha512-WMwm9LhRUo+WUaRN+vRuETqG89IgZphVSNkdFgeb6sS/E4OrDIN7t48CAewSHXc6C8lefD8KKfr5vY61brQlow=="],
 
-    "effect": ["effect@4.0.0-beta.63", "", { "dependencies": { "@standard-schema/spec": "^1.1.0", "fast-check": "^4.6.0", "find-my-way-ts": "^0.1.6", "ini": "^6.0.0", "kubernetes-types": "^1.30.0", "msgpackr": "^1.11.9", "multipasta": "^0.2.7", "toml": "^4.1.1", "uuid": "^13.0.0", "yaml": "^2.8.3" } }, "sha512-uiBtZUhm+Vd4Es9+kmvIk5FUGlDDswVcG1FQe+ugw5h2nJkbSkZbEbBLBiMTnVVZ3OnQOi+7NVKYxMkZsJAzlw=="],
+    "effect": ["effect@4.0.0-beta.64", "", { "dependencies": { "@standard-schema/spec": "^1.1.0", "fast-check": "^4.6.0", "find-my-way-ts": "^0.1.6", "ini": "^6.0.0", "kubernetes-types": "^1.30.0", "msgpackr": "^1.11.9", "multipasta": "^0.2.7", "toml": "^4.1.1", "uuid": "^13.0.0", "yaml": "^2.8.3" } }, "sha512-xI332I9guVLsqvLg7aO62IuWq9LiCMs+u5dhr4JDyND2ndYXAk5eaR8KMqtYLoJg1Ie28VQToYPM+xBLEBU3pQ=="],
 
     "electron-to-chromium": ["electron-to-chromium@1.5.286", "", {}, "sha512-9tfDXhJ4RKFNerfjdCcZfufu49vg620741MNs26a9+bhLThdB+plgMeou98CAaHu/WATj2iHOOHTp1hWtABj2A=="],
 
