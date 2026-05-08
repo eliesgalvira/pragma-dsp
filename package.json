@@ -35,86 +35,56 @@
   },
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
-  "types": "./dist/index.d.ts",
+  "types": "./dist/index.d.mts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": {
-        "development": "./src/index.ts",
-        "default": "./dist/index.mjs"
-      },
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs",
       "require": "./dist/index.cjs"
     },
     "./xform": {
-      "types": "./dist/xform/index.d.ts",
-      "import": {
-        "development": "./src/xform/index.ts",
-        "default": "./dist/xform/index.mjs"
-      },
+      "types": "./dist/xform/index.d.mts",
+      "import": "./dist/xform/index.mjs",
       "require": "./dist/xform/index.cjs"
     },
     "./xform/fourier": {
-      "types": "./dist/xform/fourier.d.ts",
-      "import": {
-        "development": "./src/xform/fourier.ts",
-        "default": "./dist/xform/fourier.mjs"
-      },
+      "types": "./dist/xform/fourier.d.mts",
+      "import": "./dist/xform/fourier.mjs",
       "require": "./dist/xform/fourier.cjs"
     },
     "./xform/stft": {
-      "types": "./dist/xform/stft.d.ts",
-      "import": {
-        "development": "./src/xform/stft.ts",
-        "default": "./dist/xform/stft.mjs"
-      },
+      "types": "./dist/xform/stft.d.mts",
+      "import": "./dist/xform/stft.mjs",
       "require": "./dist/xform/stft.cjs"
     },
     "./core": {
-      "types": "./dist/core/index.d.ts",
-      "import": {
-        "development": "./src/core/index.ts",
-        "default": "./dist/core/index.mjs"
-      },
+      "types": "./dist/core/index.d.mts",
+      "import": "./dist/core/index.mjs",
       "require": "./dist/core/index.cjs"
     },
     "./effect": {
-      "types": "./dist/effect/index.d.ts",
-      "import": {
-        "development": "./src/effect/index.ts",
-        "default": "./dist/effect/index.mjs"
-      },
+      "types": "./dist/effect/index.d.mts",
+      "import": "./dist/effect/index.mjs",
       "require": "./dist/effect/index.cjs"
     },
     "./math/complex": {
-      "types": "./dist/math/index.d.ts",
-      "import": {
-        "development": "./src/math/index.ts",
-        "default": "./dist/math/index.mjs"
-      },
+      "types": "./dist/math/index.d.mts",
+      "import": "./dist/math/index.mjs",
       "require": "./dist/math/index.cjs"
     },
     "./fluent": {
-      "types": "./dist/fluent/index.d.ts",
-      "import": {
-        "development": "./src/fluent/index.ts",
-        "default": "./dist/fluent/index.mjs"
-      },
+      "types": "./dist/fluent/index.d.mts",
+      "import": "./dist/fluent/index.mjs",
       "require": "./dist/fluent/index.cjs"
     },
     "./analysis": {
-      "types": "./dist/analysis/index.d.ts",
-      "import": {
-        "development": "./src/analysis/index.ts",
-        "default": "./dist/analysis/index.mjs"
-      },
+      "types": "./dist/analysis/index.d.mts",
+      "import": "./dist/analysis/index.mjs",
       "require": "./dist/analysis/index.cjs"
     },
     "./xform/fourier-fluent": {
-      "types": "./dist/xform/fourier-fluent.d.ts",
-      "import": {
-        "development": "./src/xform/fourier-fluent.ts",
-        "default": "./dist/xform/fourier-fluent.mjs"
-      },
+      "types": "./dist/xform/fourier-fluent.d.mts",
+      "import": "./dist/xform/fourier-fluent.mjs",
       "require": "./dist/xform/fourier-fluent.cjs"
     }
   },
@@ -133,8 +103,9 @@
     "test:watch": "vitest",
     "test:reallife": "vitest run test/reallife/",
     "check:pack": "pnpm pack --dry-run",
+    "check:exports": "node scripts/check-package-exports.mjs",
     "check:tree-shaking": "is-tree-shakable && is-tree-shakable --resolution web",
-    "release:check": "pnpm run build && pnpm run typecheck && pnpm run test && pnpm run check:pack && pnpm run check:tree-shaking",
+    "release:check": "pnpm run build && pnpm run typecheck && pnpm run test && pnpm run check:pack && pnpm run check:exports && pnpm run check:tree-shaking",
     "release:alpha": "pnpm run release:check && npm publish --tag alpha",
     "release:latest": "pnpm run release:check && npm publish --tag latest",
     "bench": "node --import tsx bench/run.ts",
