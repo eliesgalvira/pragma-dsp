@@ -147,6 +147,7 @@
     }
   },
   "scripts": {
+    "prepare": "effect-language-service patch",
     "build": "tsdown",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
@@ -163,8 +164,9 @@
     "gen:refs": "uv run --directory scripts python gen_reallife_refs.py --out ../test/reallife/references/"
   },
   "devDependencies": {
+    "@effect/language-service": "0.85.1",
     "@types/node": "25.5.0",
-    "effect": "^4.0.0-beta.64",
+    "effect": "4.0.0-beta.64",
     "is-tree-shakable": "0.5.0",
     "mitata": "^1.0.0",
     "tsdown": "^0.20.3",
