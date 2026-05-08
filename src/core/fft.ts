@@ -97,7 +97,7 @@ export class Radix2Fft {
         `FFT input length ${inputReal.length} != size ${this.size}`
       );
     }
-    if (inputImag && inputImag.length !== this.size) {
+    if (inputImag !== null && inputImag.length !== this.size) {
       throw new Error(
         `FFT input length ${inputImag.length} != size ${this.size}`
       );
@@ -110,7 +110,7 @@ export class Radix2Fft {
     for (let i = 0; i < this.size; i += 1) {
       const j = this.bitReverse[i]!;
       outReal[j] = inputReal[i] ?? 0;
-      outImag[j] = inputImag ? inputImag[i] ?? 0 : 0;
+      outImag[j] = inputImag !== null ? inputImag[i] ?? 0 : 0;
     }
 
     for (let stage = 0; stage < this.twiddles.length; stage += 1) {

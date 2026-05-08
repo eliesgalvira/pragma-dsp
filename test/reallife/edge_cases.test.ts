@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { FFT, magnitude } from "../../src/xform/fourier.js";
-import { spectrum } from "../../src/public/spectrum.js";
-import { loadSpecial, maxAbsError } from "./helpers.js";
+import { FFT, magnitude } from "../../src/xform/fourier.ts";
+import { spectrum } from "../../src/public/spectrum.ts";
+import { loadSpecial, maxAbsError } from "./helpers.ts";
 
 describe("edge cases and robustness", () => {
   describe("zero input", () => {
     it("FFT of zeros gives zeros", () => {
       const ref = loadSpecial();
       const zerosCase = ref.cases.find((c) => c.kind === "zeros");
-      if (!zerosCase) throw new Error("Missing zeros test case");
+      if (zerosCase === undefined) throw new Error("Missing zeros test case");
 
       const fft = new FFT(zerosCase.n);
       const result = fft.forward(zerosCase.signal);
@@ -42,7 +42,7 @@ describe("edge cases and robustness", () => {
     it("DC signal has energy only in bin 0", () => {
       const ref = loadSpecial();
       const dcCase = ref.cases.find((c) => c.kind === "dc");
-      if (!dcCase) throw new Error("Missing DC test case");
+      if (dcCase === undefined) throw new Error("Missing DC test case");
 
       const fft = new FFT(dcCase.n);
       const result = fft.forward(dcCase.signal);
@@ -65,7 +65,7 @@ describe("edge cases and robustness", () => {
     it("alternating +1/-1 has energy only at Nyquist", () => {
       const ref = loadSpecial();
       const nyquistCase = ref.cases.find((c) => c.kind === "nyquist");
-      if (!nyquistCase) throw new Error("Missing Nyquist test case");
+      if (nyquistCase === undefined) throw new Error("Missing Nyquist test case");
 
       const fft = new FFT(nyquistCase.n);
       const result = fft.forward(nyquistCase.signal);
@@ -94,7 +94,7 @@ describe("edge cases and robustness", () => {
       const impulseCase = ref.cases.find(
         (c) => c.kind === "impulse" && c.params.position === 0
       );
-      if (!impulseCase) throw new Error("Missing impulse test case");
+      if (impulseCase === undefined) throw new Error("Missing impulse test case");
 
       const fft = new FFT(impulseCase.n);
       const result = fft.forward(impulseCase.signal);
@@ -112,7 +112,7 @@ describe("edge cases and robustness", () => {
       const impulseCase = ref.cases.find(
         (c) => c.kind === "impulse" && (c.params.position as number) > 0
       );
-      if (!impulseCase) throw new Error("Missing shifted impulse test case");
+      if (impulseCase === undefined) throw new Error("Missing shifted impulse test case");
 
       const fft = new FFT(impulseCase.n);
       const result = fft.forward(impulseCase.signal);
@@ -130,7 +130,7 @@ describe("edge cases and robustness", () => {
     it("handles tiny amplitude signals without underflow", () => {
       const ref = loadSpecial();
       const tinyCase = ref.cases.find((c) => c.kind === "tiny");
-      if (!tinyCase) throw new Error("Missing tiny amplitude test case");
+      if (tinyCase === undefined) throw new Error("Missing tiny amplitude test case");
 
       const fft = new FFT(tinyCase.n);
       const result = fft.forward(tinyCase.signal);
@@ -151,7 +151,7 @@ describe("edge cases and robustness", () => {
     it("handles large amplitude signals without overflow", () => {
       const ref = loadSpecial();
       const largeCase = ref.cases.find((c) => c.kind === "large");
-      if (!largeCase) throw new Error("Missing large amplitude test case");
+      if (largeCase === undefined) throw new Error("Missing large amplitude test case");
 
       const fft = new FFT(largeCase.n);
       const result = fft.forward(largeCase.signal);

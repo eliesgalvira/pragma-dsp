@@ -1,7 +1,7 @@
-import type { StftResult } from "../xform/stft.js";
-import { stft } from "../xform/stft.js";
-import { autocorrelation } from "../xform/fourier.js";
-import { spectralEnvelope } from "./spectral.js";
+import type { StftResult } from "../xform/stft.ts";
+import { stft } from "../xform/stft.ts";
+import { autocorrelation } from "../xform/fourier.ts";
+import { spectralEnvelope } from "./spectral.ts";
 
 export type PitchResult = {
   readonly f0: number | null;

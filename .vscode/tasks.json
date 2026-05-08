@@ -1,0 +1,19 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "typecheck",
+      "type": "shell",
+      "command": "pnpm run typecheck",
+      "problemMatcher": "$tsc",
+      "runOptions": {
+        "runOn": "folderOpen"
+      },
+      "presentation": {
+        "reveal": "never",
+        "panel": "dedicated",
+        "clear": true
+      }
+    }
+  ]
+}

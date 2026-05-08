@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { FFT, magnitude, phase } from "../../src/xform/fourier.js";
+import { FFT, magnitude, phase } from "../../src/xform/fourier.ts";
 import {
   expectCloseArray,
   loadChirp,
@@ -7,7 +7,7 @@ import {
   loadPureSine,
   loadSpecial,
   maxAbsError
-} from "./helpers.js";
+} from "./helpers.ts";
 
 describe("FFT correctness vs NumPy", () => {
   describe("pure sine waves", () => {
@@ -123,7 +123,7 @@ describe("FFT correctness vs NumPy", () => {
     const ref = loadSpecial();
 
     const impulseCase = ref.cases.find((c) => c.kind === "impulse");
-    if (impulseCase) {
+    if (impulseCase !== undefined) {
       it("impulse has flat magnitude spectrum", () => {
         const fft = new FFT(impulseCase.n);
         const result = fft.forward(impulseCase.signal);
@@ -139,7 +139,7 @@ describe("FFT correctness vs NumPy", () => {
     }
 
     const dcCase = ref.cases.find((c) => c.kind === "dc");
-    if (dcCase) {
+    if (dcCase !== undefined) {
       it("DC signal has energy only in bin 0", () => {
         const fft = new FFT(dcCase.n);
         const result = fft.forward(dcCase.signal);
@@ -159,7 +159,7 @@ describe("FFT correctness vs NumPy", () => {
     }
 
     const nyquistCase = ref.cases.find((c) => c.kind === "nyquist");
-    if (nyquistCase) {
+    if (nyquistCase !== undefined) {
       it("Nyquist signal has energy only at Nyquist bin", () => {
         const fft = new FFT(nyquistCase.n);
         const result = fft.forward(nyquistCase.signal);
@@ -182,7 +182,7 @@ describe("FFT correctness vs NumPy", () => {
     }
 
     const zerosCase = ref.cases.find((c) => c.kind === "zeros");
-    if (zerosCase) {
+    if (zerosCase !== undefined) {
       it("zero input gives zero output", () => {
         const fft = new FFT(zerosCase.n);
         const result = fft.forward(zerosCase.signal);

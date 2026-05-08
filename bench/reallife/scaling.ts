@@ -10,9 +10,9 @@
  * Run: bun run bench/reallife/scaling.ts
  */
 
-import { spectrum } from "../../src/public/spectrum.js";
-import { binFrequencies } from "../../src/xform/fourier.js";
-import { BenchContext, loadPureSine, loadSpecial } from "./helpers.js";
+import { spectrum } from "../../src/public/spectrum.ts";
+import { binFrequencies } from "../../src/xform/fourier.ts";
+import { BenchContext, loadPureSine, loadSpecial, warn } from "./helpers.ts";
 
 const bench = new BenchContext("Scaling Benchmark");
 
@@ -46,14 +46,14 @@ for (const testCase of binCenteredCases.slice(0, 5)) {
   const expectedBin = testCase.params.bin_index as number;
 
   if (result.peak.index !== expectedBin) {
-    console.warn(
+    warn(
       `  WARNING: Peak at bin ${result.peak.index}, expected ${expectedBin}`
     );
   }
 
   const ampError = Math.abs(result.peak.amplitude - expectedAmp);
   if (ampError > 0.01) {
-    console.warn(
+    warn(
       `  WARNING: Amplitude ${result.peak.amplitude}, expected ${expectedAmp}, error ${ampError}`
     );
   }
@@ -70,7 +70,7 @@ bench.section("DC Bin Scaling");
 const specialRef = loadSpecial();
 const dcCase = specialRef.cases.find((c) => c.kind === "dc");
 
-if (dcCase) {
+if (dcCase !== undefined) {
   const input = Float64Array.from(dcCase.signal);
   const options = {
     sampleRate: dcCase.sampleRate,
@@ -87,7 +87,7 @@ if (dcCase) {
   const expectedDcAmp = dcCase.params.level as number;
   const dcError = Math.abs(result.amplitude[0]! - expectedDcAmp);
   if (dcError > 1e-6) {
-    console.warn(
+    warn(
       `  WARNING: DC amplitude ${result.amplitude[0]}, expected ${expectedDcAmp}`
     );
   }
@@ -101,7 +101,7 @@ bench.section("Nyquist Bin Scaling");
 
 const nyquistCase = specialRef.cases.find((c) => c.kind === "nyquist");
 
-if (nyquistCase) {
+if (nyquistCase !== undefined) {
   const input = Float64Array.from(nyquistCase.signal);
   const options = {
     sampleRate: nyquistCase.sampleRate,
@@ -121,7 +121,7 @@ if (nyquistCase) {
     result.amplitude[nyquistIndex]! - expectedNyquistAmp
   );
   if (nyquistError > 1e-6) {
-    console.warn(
+    warn(
       `  WARNING: Nyquist amplitude ${result.amplitude[nyquistIndex]}, expected ${expectedNyquistAmp}`
     );
   }
@@ -151,7 +151,7 @@ for (const testCase of binCenteredCases.slice(0, 5)) {
 
   // Verify two-sided has full N bins
   if (result.amplitude.length !== testCase.n) {
-    console.warn(
+    warn(
       `  WARNING: Two-sided has ${result.amplitude.length} bins, expected ${testCase.n}`
     );
   }
@@ -166,7 +166,7 @@ for (const testCase of binCenteredCases.slice(0, 5)) {
   const negAmpError = Math.abs(result.amplitude[negativeBin]! - expectedAmp / 2);
 
   if (posAmpError > 0.01 || negAmpError > 0.01) {
-    console.warn(
+    warn(
       `  WARNING: Two-sided amplitude splitting error (pos: ${posAmpError}, neg: ${negAmpError})`
     );
   }
@@ -202,27 +202,27 @@ const freqsTwo = binFrequencies(testSize, sampleRate, "two");
 
 // One-sided: N/2 + 1 bins
 if (freqsOne.length !== testSize / 2 + 1) {
-  console.warn(
+  warn(
     `  WARNING: One-sided has ${freqsOne.length} bins, expected ${testSize / 2 + 1}`
   );
 }
 
 // Two-sided: N bins
 if (freqsTwo.length !== testSize) {
-  console.warn(
+  warn(
     `  WARNING: Two-sided has ${freqsTwo.length} bins, expected ${testSize}`
   );
 }
 
 // First bin is DC (0 Hz)
 if (freqsOne[0] !== 0) {
-  console.warn(`  WARNING: First bin is ${freqsOne[0]}, expected 0`);
+  warn(`  WARNING: First bin is ${freqsOne[0]}, expected 0`);
 }
 
 // Last one-sided bin is Nyquist
 const nyquist = sampleRate / 2;
 if (Math.abs(freqsOne[freqsOne.length - 1]! - nyquist) > 1e-10) {
-  console.warn(
+  warn(
     `  WARNING: Last one-sided bin is ${freqsOne[freqsOne.length - 1]}, expected ${nyquist}`
   );
 }
@@ -238,7 +238,7 @@ bench.section("Peak Detection");
 // Test that peak detection ignores DC when there are non-DC components
 const dcPlusSine = specialRef.cases.find((c) => c.kind === "dc_plus_sine");
 
-if (dcPlusSine) {
+if (dcPlusSine !== undefined) {
   const input = Float64Array.from(dcPlusSine.signal);
   const options = {
     sampleRate: dcPlusSine.sampleRate,
@@ -253,14 +253,14 @@ if (dcPlusSine) {
 
   const expectedBin = dcPlusSine.params.sine_bin as number;
   if (result.peak.index !== expectedBin) {
-    console.warn(
+    warn(
       `  WARNING: Peak at bin ${result.peak.index}, expected ${expectedBin} (sine bin, not DC)`
     );
   }
 }
 
 // Pure DC should return DC as peak
-if (dcCase) {
+if (dcCase !== undefined) {
   const input = Float64Array.from(dcCase.signal);
   const options = {
     sampleRate: dcCase.sampleRate,
@@ -274,7 +274,7 @@ if (dcCase) {
   );
 
   if (result.peak.index !== 0) {
-    console.warn(
+    warn(
       `  WARNING: Pure DC peak at bin ${result.peak.index}, expected 0`
     );
   }

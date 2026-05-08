@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { FFT } from "../src/xform/fourier.js";
-import { getCasesByN, loadFixtures } from "./fixtures.js";
+import { FFT } from "../src/xform/fourier.ts";
+import { getCasesByN, loadFixtures } from "./fixtures.ts";
 
 const expectCloseArray = (
   actual: ArrayLike<number>,

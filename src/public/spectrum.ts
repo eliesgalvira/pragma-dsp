@@ -9,8 +9,8 @@ import {
   createWindow,
   magnitude,
   phase
-} from "../xform/fourier.js";
-import { nextPowerOfTwo, type ComplexArray } from "../core/fft.js";
+} from "../xform/fourier.ts";
+import { nextPowerOfTwo, type ComplexArray } from "../core/fft.ts";
 
 export type SpectrumPeak = {
   index: number;
@@ -153,7 +153,7 @@ export function spectrum(
     peak
   };
 
-  if (options.returnComplex) {
+  if (options.returnComplex === true) {
     return { ...result, complex: spectrumComplex };
   }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { FluentFFT } from "../../src/xform/fourier-fluent.js";
+import { FluentFFT } from "../../src/xform/fourier-fluent.ts";
 import {
   chain,
   assertNonZero,
@@ -7,8 +7,8 @@ import {
   type NonZero,
   type InverseReady,
   ComplexChain,
-} from "../../src/fluent/complex.js";
-import { createComplexArray } from "../../src/core/fft.js";
+} from "../../src/fluent/complex.ts";
+import { createComplexArray } from "../../src/core/fft.ts";
 
 // ── helpers ──────────────────────────────────────────────────────────
 

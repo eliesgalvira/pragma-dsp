@@ -1,1 +1,1 @@
-export * from "./public/spectrum.js";
+export * from "./public/spectrum.ts";

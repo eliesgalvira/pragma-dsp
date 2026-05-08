@@ -5,7 +5,7 @@ export {
   type MagnitudeToDbOptions,
   type MovingAverageOptions,
   type SpectralEnvelopeOptions,
-} from "./spectral.js";
+} from "./spectral.ts";
 export {
   analyzeSpeech,
   detectFormants,
@@ -16,4 +16,4 @@ export {
   type FormantResult,
   type PitchResult,
   type SpeechAnalysisResult,
-} from "./speech.js";
+} from "./speech.ts";

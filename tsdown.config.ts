@@ -9,6 +9,7 @@ export default defineConfig({
     "./src/xform/fourier-fluent.ts",
     "./src/core/index.ts",
     "./src/effect/index.ts",
+    "./src/effect/Fourier.ts",
     "./src/math/index.ts",
     "./src/fluent/index.ts",
     "./src/analysis/index.ts"

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { istft, stft } from "../src/xform/stft.js";
+import { istft, stft } from "../src/xform/stft.ts";
 
 describe("stft()", () => {
   it("produces expected frame, bin, and time shapes", () => {

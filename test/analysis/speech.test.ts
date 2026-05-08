@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { analyzeSpeech, detectFormants, detectPitch } from "../../src/analysis/index.js";
+import { analyzeSpeech, detectFormants, detectPitch } from "../../src/analysis/index.ts";
 
 describe("speech analysis helpers", () => {
   it("detectPitch finds a bin-centered sine", () => {

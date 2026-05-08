@@ -10,17 +10,20 @@
  * Run: bun run bench/reallife/effect.ts
  */
 
-import { Effect, Stream } from "effect";
-import { spectrum } from "../../src/public/spectrum.js";
+import * as Effect from "effect/Effect";
+import * as ManagedRuntime from "effect/ManagedRuntime";
+import * as Stream from "effect/Stream";
+import { spectrum } from "../../src/public/spectrum.ts";
 import {
   Fourier,
   FourierLive,
   spectrumFx,
   spectrumStream
-} from "../../src/effect/index.js";
-import { BenchContext, loadPureSine } from "./helpers.js";
+} from "../../src/effect/index.ts";
+import { BenchContext, loadPureSine, log, warn } from "./helpers.ts";
 
 const bench = new BenchContext("Effect API Benchmark");
+const runtime = ManagedRuntime.make(FourierLive);
 
 // =============================================================================
 // spectrumFx vs spectrum() Parity
@@ -49,22 +52,22 @@ for (const testCase of testCases) {
   const effectResult = bench.time(
     `spectrumFx (Effect, ${testCase.name})`,
     () =>
-      Effect.runSync(spectrumFx(input, options).pipe(Effect.provide(FourierLive)))
+      runtime.runSync(spectrumFx(input, options))
   );
 
   // Verify parity
   if (effectResult.peak.index !== pureResult.peak.index) {
-    console.warn(
+    warn(
       `  WARNING: Peak index mismatch (Effect: ${effectResult.peak.index}, Pure: ${pureResult.peak.index})`
     );
   }
   if (effectResult.peak.frequency !== pureResult.peak.frequency) {
-    console.warn(
+    warn(
       `  WARNING: Peak frequency mismatch (Effect: ${effectResult.peak.frequency}, Pure: ${pureResult.peak.frequency})`
     );
   }
   if (effectResult.peak.amplitude !== pureResult.peak.amplitude) {
-    console.warn(
+    warn(
       `  WARNING: Peak amplitude mismatch (Effect: ${effectResult.peak.amplitude}, Pure: ${pureResult.peak.amplitude})`
     );
   }
@@ -78,11 +81,11 @@ for (const testCase of testCases) {
     }
   }
   if (!arraysMatch) {
-    console.warn(`  WARNING: Amplitude arrays don't match for ${testCase.name}`);
+    warn(`  WARNING: Amplitude arrays don't match for ${testCase.name}`);
   }
 }
 
-console.log(`  VERIFIED: spectrumFx produces identical results to spectrum()`);
+log(`  VERIFIED: spectrumFx produces identical results to spectrum()`);
 
 bench.memory("After parity check");
 
@@ -105,19 +108,19 @@ const fftCachingProgram = Effect.gen(function* () {
 });
 
 const cacheResult = bench.time(`FFT caching verification`, () =>
-  Effect.runSync(fftCachingProgram.pipe(Effect.provide(FourierLive)))
+  runtime.runSync(fftCachingProgram)
 );
 
 if (cacheResult.fft64a === cacheResult.fft64b) {
-  console.log(`  VERIFIED: Same FFT size returns same instance (cache hit)`);
+  log(`  VERIFIED: Same FFT size returns same instance (cache hit)`);
 } else {
-  console.warn(`  WARNING: FFT cache miss for same size`);
+  warn(`  WARNING: FFT cache miss for same size`);
 }
 
 if (cacheResult.fft64a !== cacheResult.fft128) {
-  console.log(`  VERIFIED: Different FFT size returns different instance`);
+  log(`  VERIFIED: Different FFT size returns different instance`);
 } else {
-  console.warn(`  WARNING: Different FFT sizes returned same instance`);
+  warn(`  WARNING: Different FFT sizes returned same instance`);
 }
 
 // Benchmark cache hit performance
@@ -126,12 +129,10 @@ for (const size of sizes) {
   bench.time(
     `FFT cache lookup (size=${size})`,
     () =>
-      Effect.runSync(
-        Effect.gen(function* () {
+      runtime.runSync(Effect.gen(function* () {
           const service = yield* Fourier;
           return service.fft(size);
-        }).pipe(Effect.provide(FourierLive))
-      ),
+        })),
     { iterations: 1000 }
   );
 }
@@ -157,27 +158,27 @@ const windowCachingProgram = Effect.gen(function* () {
 });
 
 const windowCacheResult = bench.time(`Window caching verification`, () =>
-  Effect.runSync(windowCachingProgram.pipe(Effect.provide(FourierLive)))
+  runtime.runSync(windowCachingProgram)
 );
 
 if (windowCacheResult.hann64a === windowCacheResult.hann64b) {
-  console.log(
+  log(
     `  VERIFIED: Same window type+size returns same instance (cache hit)`
   );
 } else {
-  console.warn(`  WARNING: Window cache miss for same type+size`);
+  warn(`  WARNING: Window cache miss for same type+size`);
 }
 
 if (windowCacheResult.hann64a !== windowCacheResult.hamming64) {
-  console.log(`  VERIFIED: Different window type returns different instance`);
+  log(`  VERIFIED: Different window type returns different instance`);
 } else {
-  console.warn(`  WARNING: Different window types returned same instance`);
+  warn(`  WARNING: Different window types returned same instance`);
 }
 
 if (windowCacheResult.hann64a !== windowCacheResult.hann128) {
-  console.log(`  VERIFIED: Different window size returns different instance`);
+  log(`  VERIFIED: Different window size returns different instance`);
 } else {
-  console.warn(`  WARNING: Different window sizes returned same instance`);
+  warn(`  WARNING: Different window sizes returned same instance`);
 }
 
 // Benchmark window cache hit performance
@@ -186,12 +187,10 @@ for (const wtype of windowTypes) {
   bench.time(
     `Window cache lookup (${wtype}, size=1024)`,
     () =>
-      Effect.runSync(
-        Effect.gen(function* () {
+      runtime.runSync(Effect.gen(function* () {
           const service = yield* Fourier;
           return service.window(wtype, 1024);
-        }).pipe(Effect.provide(FourierLive))
-      ),
+        })),
     { iterations: 1000 }
   );
 }
@@ -216,18 +215,14 @@ const streamOptions = {
 // Process 3 frames
 const threeFrames = Stream.fromIterable([frame, frame, frame]);
 const threeFrameResults = bench.time(`spectrumStream (3 frames)`, () =>
-  Effect.runSync(
-    Stream.runCollect(spectrumStream(threeFrames, streamOptions)).pipe(
-      Effect.provide(FourierLive)
-    )
-  )
+  runtime.runSync(Stream.runCollect(spectrumStream(threeFrames, streamOptions)))
 );
 
 const resultsArray = Array.from(threeFrameResults);
 if (resultsArray.length === 3) {
-  console.log(`  VERIFIED: Processed 3 frames correctly`);
+  log(`  VERIFIED: Processed 3 frames correctly`);
 } else {
-  console.warn(`  WARNING: Expected 3 results, got ${resultsArray.length}`);
+  warn(`  WARNING: Expected 3 results, got ${resultsArray.length}`);
 }
 
 // Verify all results are consistent (same input frame)
@@ -240,19 +235,15 @@ for (const result of resultsArray) {
   }
 }
 if (allMatch) {
-  console.log(`  VERIFIED: All stream results match expected peak`);
+  log(`  VERIFIED: All stream results match expected peak`);
 } else {
-  console.warn(`  WARNING: Stream results don't match expected peak`);
+  warn(`  WARNING: Stream results don't match expected peak`);
 }
 
 // Process 10 frames
 const tenFrames = Stream.fromIterable(Array(10).fill(frame));
 bench.time(`spectrumStream (10 frames)`, () =>
-  Effect.runSync(
-    Stream.runCollect(spectrumStream(tenFrames, streamOptions)).pipe(
-      Effect.provide(FourierLive)
-    )
-  )
+  runtime.runSync(Stream.runCollect(spectrumStream(tenFrames, streamOptions)))
 );
 
 // Process 100 frames
@@ -260,28 +251,20 @@ const hundredFrames = Stream.fromIterable(Array(100).fill(frame));
 bench.time(
   `spectrumStream (100 frames)`,
   () =>
-    Effect.runSync(
-      Stream.runCollect(spectrumStream(hundredFrames, streamOptions)).pipe(
-        Effect.provide(FourierLive)
-      )
-    ),
+    runtime.runSync(Stream.runCollect(spectrumStream(hundredFrames, streamOptions))),
   { iterations: 10 }
 );
 
 // Empty stream
 const emptyStream = Stream.empty as Stream.Stream<Float32Array>;
 const emptyResults = bench.time(`spectrumStream (empty)`, () =>
-  Effect.runSync(
-    Stream.runCollect(spectrumStream(emptyStream, streamOptions)).pipe(
-      Effect.provide(FourierLive)
-    )
-  )
+  runtime.runSync(Stream.runCollect(spectrumStream(emptyStream, streamOptions)))
 );
 
 if (Array.from(emptyResults).length === 0) {
-  console.log(`  VERIFIED: Empty stream returns no results`);
+  log(`  VERIFIED: Empty stream returns no results`);
 } else {
-  console.warn(`  WARNING: Empty stream returned results`);
+  warn(`  WARNING: Empty stream returned results`);
 }
 
 bench.memory("After spectrumStream");
@@ -310,25 +293,25 @@ for (const windowType of windowTypes) {
 
   // Effect API
   const effectResult = bench.time(`spectrumFx (Effect, ${windowType})`, () =>
-    Effect.runSync(spectrumFx(windowInput, options).pipe(Effect.provide(FourierLive)))
+    runtime.runSync(spectrumFx(windowInput, options))
   );
 
   // Verify parity
   if (effectResult.peak.index !== pureResult.peak.index) {
-    console.warn(
+    warn(
       `  WARNING: ${windowType} peak index mismatch (Effect: ${effectResult.peak.index}, Pure: ${pureResult.peak.index})`
     );
   }
 
   const ampDiff = Math.abs(effectResult.peak.amplitude - pureResult.peak.amplitude);
   if (ampDiff > 1e-10) {
-    console.warn(
+    warn(
       `  WARNING: ${windowType} amplitude diff ${ampDiff}`
     );
   }
 }
 
-console.log(`  VERIFIED: All window types work via Effect API`);
+log(`  VERIFIED: All window types work via Effect API`);
 
 bench.memory("After window types");
 
@@ -364,26 +347,19 @@ bench.time(
   () => {
     let lastResult;
     for (let i = 0; i < 100; i += 1) {
-      lastResult = Effect.runSync(
-        spectrumFx(perfInput, perfOptions).pipe(Effect.provide(FourierLive))
-      );
+      lastResult = runtime.runSync(spectrumFx(perfInput, perfOptions));
     }
     return lastResult;
   },
   { iterations: 10 }
 );
 
-// Effect with pre-provided layer (more realistic usage)
-const providedProgram = spectrumFx(perfInput, perfOptions).pipe(
-  Effect.provide(FourierLive)
-);
-
 bench.time(
-  `100x spectrumFx (pre-provided layer, n=${perfTestCase.n})`,
+  `100x spectrumFx (managed runtime, n=${perfTestCase.n})`,
   () => {
     let lastResult;
     for (let i = 0; i < 100; i += 1) {
-      lastResult = Effect.runSync(providedProgram);
+      lastResult = runtime.runSync(spectrumFx(perfInput, perfOptions));
     }
     return lastResult;
   },
@@ -421,7 +397,7 @@ const cacheBenefitProgram = Effect.gen(function* () {
 bench.time(
   `100 FFT + 100 window cache lookups`,
   () =>
-    Effect.runSync(cacheBenefitProgram.pipe(Effect.provide(FourierLive))),
+    runtime.runSync(cacheBenefitProgram),
   { iterations: 100 }
 );
 
@@ -442,7 +418,7 @@ const mixedCacheProgram = Effect.gen(function* () {
 bench.time(
   `10 FFT lookups (5 sizes, 2x each)`,
   () =>
-    Effect.runSync(mixedCacheProgram.pipe(Effect.provide(FourierLive))),
+    runtime.runSync(mixedCacheProgram),
   { iterations: 100 }
 );
 

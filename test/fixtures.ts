@@ -1,6 +1,9 @@
+import * as Effect from "effect/Effect";
+import * as Schema from "effect/Schema";
+// @effect-diagnostics-next-line nodeBuiltinImport:off
 import { readFileSync } from "node:fs";
+// @effect-diagnostics-next-line nodeBuiltinImport:off
 import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 
 export type FixtureWindow = {
   type: "rect" | "hann" | "hamming" | "blackman";
@@ -42,13 +45,19 @@ export type Fixtures = {
 };
 
 const fixturesPath = resolve(
-  dirname(fileURLToPath(import.meta.url)),
+  dirname(new URL(import.meta.url).pathname),
   "fixtures",
   "pragma-dsp.v0.1.json"
 );
 
-export const loadFixtures = (): Fixtures =>
-  JSON.parse(readFileSync(fixturesPath, "utf8")) as Fixtures;
+const loadFixturesProgram = Effect.sync(() => {
+    const content = readFileSync(fixturesPath, "utf8");
+    return Schema.decodeUnknownSync(Schema.UnknownFromJsonString)(
+      content
+    ) as Fixtures;
+  });
+
+export const loadFixtures = (): Fixtures => Effect.runSync(loadFixturesProgram);
 
 export const getCasesByN = (fixtures: Fixtures, n: number): FixtureCase[] =>
   fixtures.fftCases.filter((c) => c.n === n);
@@ -58,7 +67,7 @@ export const getCaseByName = (
   name: string
 ): FixtureCase => {
   const found = fixtures.fftCases.find((c) => c.name === name);
-  if (!found) {
+  if (found === undefined) {
     throw new Error(`Missing fixture case: ${name}`);
   }
   return found;

@@ -7,7 +7,7 @@ import packageJson from "../package.json" with { type: "json" };
 const tempDir = await mkdtemp(join(tmpdir(), "pragma-dsp-pack-"));
 
 try {
-  const output = execFileSync("pnpm", ["pack", "--json", "--pack-destination", tempDir], {
+  const output = execFileSync("pnpm", ["pack", "--json", "--config.ignore-scripts=true", "--pack-destination", tempDir], {
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"]
   });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { autocorrelation } from "../src/xform/fourier.js";
+import { autocorrelation } from "../src/xform/fourier.ts";
 
 describe("autocorrelation()", () => {
   it("matches basic linear autocorrelation for small lags", () => {

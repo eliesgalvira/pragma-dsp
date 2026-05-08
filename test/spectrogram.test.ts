@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { spectrogram, stft } from "../src/xform/stft.js";
+import { spectrogram, stft } from "../src/xform/stft.ts";
 
 describe("spectrogram()", () => {
   it("derives dB frames from a signal", () => {
