@@ -1,6 +1,6 @@
 {
   "name": "pragma-dsp",
-  "version": "0.1.0-alpha.3",
+  "version": "0.1.0-alpha.4",
   "description": "Useful DSP primitives for TypeScript.",
   "keywords": [
     "dsp",
