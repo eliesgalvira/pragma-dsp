@@ -1,6 +1,6 @@
 # pragma-dsp
 
-Pragmatic DSP primitives for TypeScript.
+Pragmatic DSP primitives for TypeScript, with optional Effect integration for cached Fourier transforms and streaming spectrum analysis.
 
 `pragma-dsp` is designed as an API ladder:
 
